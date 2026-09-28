@@ -53,7 +53,8 @@ sealed partial class DocumentBBLang
             builder.Append(GeneralType.TryInsertTypeParameters(function.Parameters[i].Type, typeArguments).ToString());
 
             builder.Append(' ');
-            builder.Append(function.Parameters[i].Identifier.ToString());
+            builder.Append(function.Parameters[i].Identifier);
+            if (function.Parameters[i].Definition.SpreadOperator is not null) builder.Append(function.Parameters[i].Definition.SpreadOperator!.ToString());
         }
         builder.Append(')');
         return builder.ToString();

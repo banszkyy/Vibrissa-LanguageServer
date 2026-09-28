@@ -3,7 +3,7 @@ using LanguageCore;
 
 namespace LanguageServer;
 
-public class Logger : ILogger
+public class Logger : ITraceLogger
 {
     public static readonly Logger Instance = new();
 
