@@ -69,6 +69,8 @@ sealed class OmniSharpService
            //.WithHandler<NotebookDocumentSyncHandler>()
         ;
 
+        options.AddHandler<RecompileHandler>("bblang/compiler/recompile");
+
         options.OnInitialize((server, request, cancellationToken) =>
         {
             if (request.Capabilities?.TextDocument is not null)

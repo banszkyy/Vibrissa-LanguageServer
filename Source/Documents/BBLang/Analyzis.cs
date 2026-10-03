@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using LanguageCore;
@@ -21,7 +22,7 @@ enum CompilationReason
 
 partial class DocumentBBLang
 {
-    static readonly Dictionary<Uri, CacheItem> Cache = new();
+    static readonly ConcurrentDictionary<Uri, CacheItem> Cache = new();
 
     public ImmutableArray<Token> Tokens;
     public ParserResult AST;
@@ -29,20 +30,20 @@ partial class DocumentBBLang
 
     public CompilerSettings CompilerSettings;
 
-    Task? CompilationTask;
+    Task<bool>? CompilationTask;
     DocumentVersion CompiledVersion;
     DocumentVersion CurrentlyCompilingVersion;
     CompilationReason CompilationReason;
     DocumentVersion DesiredCompiledVersion;
 
-    void RequestCompilation(DocumentVersion? version, CompilationReason reason) => RequestCompilation(version ?? DocumentVersion.Zero(0), reason);
-    void RequestCompilation(DocumentVersion version, CompilationReason reason)
+    bool RequestCompilation(DocumentVersion? version, CompilationReason reason, bool force = false) => RequestCompilation(version ?? DocumentVersion.Zero(0), reason, force);
+    bool RequestCompilation(DocumentVersion version, CompilationReason reason, bool force = false)
     {
-        if (CompilationTask is not null && !CompilationTask.IsCompleted) return;
-        if (CompiledVersion == version) return;
-        if (DesiredCompiledVersion == version) return;
+        if (CompilationTask is not null && !CompilationTask.IsCompleted) return false;
+        if (!force && CompiledVersion == version) return false;
+        if (!force && DesiredCompiledVersion == version) return false;
 
-        Logger.Debug($"Requesting compilation for {version} because of {reason}");
+        Logger.Debug($"Requesting compilation for {version} because of {reason}{(force ? " (forced)" : null)}");
 
         DesiredCompiledVersion = version;
 
@@ -50,7 +51,7 @@ partial class DocumentBBLang
         {
             await Task.Delay(150).ConfigureAwait(false);
 
-            if (CompiledVersion == DesiredCompiledVersion) return;
+            if (!force && CompiledVersion == DesiredCompiledVersion) return false;
 
             CompilationReason = reason;
             await CompileAsync().ConfigureAwait(false);
@@ -60,19 +61,22 @@ partial class DocumentBBLang
             {
                 RequestCompilation(DesiredCompiledVersion, reason);
             }
+
+            return true;
         });
+        return true;
     }
 
-    Task AwaitForCompilation(DocumentVersion? version, CancellationToken cancellationToken, bool force = true) => AwaitForCompilation(version ?? DocumentVersion.Zero(0), cancellationToken, force);
-    Task AwaitForCompilation(DocumentVersion version, CancellationToken cancellationToken, bool force = true)
+    Task<bool> AwaitForCompilation(DocumentVersion? version, CancellationToken cancellationToken, bool force = true) => AwaitForCompilation(version ?? DocumentVersion.Zero(0), cancellationToken, force);
+    Task<bool> AwaitForCompilation(DocumentVersion version, CancellationToken cancellationToken, bool force = true)
     {
         if (!force && (CompilationReason is CompilationReason.Requested or CompilationReason.None))
         {
             Logger.Trace($"Skipping validation");
-            return Task.CompletedTask;
+            return Task.FromResult(false);
         }
         RequestCompilation(version, CompilationReason.Requested);
-        if (CompilationTask is null) return Task.CompletedTask;
+        if (CompilationTask is null) return Task.FromResult(false);
         return CompilationTask.WaitAsync(cancellationToken);
     }
 
@@ -80,20 +84,21 @@ partial class DocumentBBLang
     {
         CurrentlyCompilingVersion = Version ?? DocumentVersion.Zero(0);
 
-        Logger.Debug($"Validating {CurrentlyCompilingVersion}");
+        Logger.Debug($"Compiling {CurrentlyCompilingVersion}");
 
         OmniSharpService.Instance?.Server?.SendNotification<CompilerStatusNotificationArgs>("bblang/compiler/status", new()
         {
             Status = "working",
-            Details = $"Compiling {System.IO.Path.GetFileName(Uri.LocalPath)} version {CurrentlyCompilingVersion}"
+            Details = $"{System.IO.Path.GetFileName(Uri.LocalPath)} {CurrentlyCompilingVersion}",
         });
+
+        BBLangProject? project = null;
 
         try
         {
             DiagnosticsCollection diagnostics = new();
 
             Configuration config = Configuration.Empty;
-            BBLangProject? project = null;
             Uri? projectRoot = null;
 
             Logger.Debug($"  Compiling configuraton");
@@ -108,12 +113,14 @@ partial class DocumentBBLang
                 if (BBLangProject.Projects.TryGetValue(configurationPath, out project))
                 {
                     project.Configuration = config;
+                    project.ConfigurationPath = configurationPath;
                 }
                 else
                 {
                     BBLangProject.Projects[configurationPath] = project = new BBLangProject()
                     {
                         Configuration = config,
+                        ConfigurationPath = configurationPath,
                     };
 
                     if (config.IsProject)
@@ -342,6 +349,11 @@ partial class DocumentBBLang
                     Version = Documents.TryGet(file, out DocumentBase? document) ? document.Version?.Version : null,
                 });
             }
+
+            OmniSharpService.Instance?.Server?.SendNotification<CompilerStatusNotificationArgs>("bblang/compiler/status", new()
+            {
+                Status = "done",
+            });
         }
 #pragma warning disable CA1031 // Do not catch general exception types
         catch (Exception ex)
@@ -358,10 +370,6 @@ partial class DocumentBBLang
         finally
         {
             CompiledVersion = CurrentlyCompilingVersion;
-            OmniSharpService.Instance?.Server?.SendNotification<CompilerStatusNotificationArgs>("bblang/compiler/status", new()
-            {
-                Status = "done",
-            });
         }
     }
 }
