@@ -5,6 +5,7 @@ using LanguageCore;
 using LanguageCore.BBLang.Generator;
 using LanguageCore.Compiler;
 using LanguageCore.Parser;
+using LanguageCore.Runtime;
 using LanguageCore.Tokenizing;
 using LanguageCore.Workspaces;
 using Diagnostic = LanguageCore.Diagnostic;
@@ -180,15 +181,23 @@ partial class DocumentBBLang
                 isPartialSource = true;
             }
 
+            List<IExternalFunction> externalFunctions = new();
+            externalFunctions.AddRange(config.ExternalFunctions);
+            externalFunctions.AddRangeIf(BytecodeProcessor.GetExternalFunctions(VoidIO.Instance), v => !externalFunctions.Any(w => v.Name != w.Name));
+            List<ExternalConstant> externalConstants = new();
+            externalConstants.AddRange(config.ExternalConstants);
+            externalConstants.AddRangeIf([
+                new ExternalConstant("heap_size", BytecodeInterpreterSettings.Default.HeapSize)
+            ], v => !externalConstants.Any(w => v.Name != w.Name));
+
             CompilerSettings compilerSettings = CompilerSettings = new(CodeGeneratorForMain.DefaultCompilerSettings)
             {
                 Optimizations = OptimizationSettings.None,
                 CompileEverything = true,
-                PreprocessorVariables = PreprocessorVariables.Normal,
                 SourceProviders = [.. sourceProviders],
                 AdditionalImports = config.AdditionalImports,
-                ExternalFunctions = config.ExternalFunctions.As<LanguageCore.Runtime.IExternalFunction>(),
-                ExternalConstants = config.ExternalConstants,
+                ExternalFunctions = externalFunctions.ToImmutableArray(),
+                ExternalConstants = externalConstants.ToImmutableArray(),
                 TokenizerSettings = new TokenizerSettings(TokenizerSettings.Default)
                 {
                     TokenizeComments = true,

@@ -71,6 +71,8 @@ sealed class OmniSharpService
 
         options.AddHandler<RecompileHandler>("bblang/compiler/recompile");
 
+        options.AddHandler<DecorationsHandler>("bblang/decorations");
+
         options.OnInitialize((server, request, cancellationToken) =>
         {
             if (request.Capabilities?.TextDocument is not null)

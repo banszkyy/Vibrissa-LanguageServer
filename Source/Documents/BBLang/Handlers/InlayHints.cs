@@ -15,6 +15,9 @@ sealed partial class DocumentBBLang
 
         MutableRange<SinglePosition> range = request.Range.ToCool();
         List<InlayHint> result = new();
+        bool templateHints = true;
+        bool parameterNameHints = false;
+        bool arrayLengthHints = true;
 
         static IEnumerable<TypeInstance> EnumerateNestedTypeInstances(TypeInstance v)
         {
@@ -42,28 +45,31 @@ sealed partial class DocumentBBLang
             }
         }
 
-        foreach (TypeInstance item in AST.EnumerateTypeInstances())
+        if (arrayLengthHints)
         {
-            if (!RangeUtils.Overlaps(range, item.Position.Range)) continue;
-
-            foreach (TypeInstance type in EnumerateNestedTypeInstances(item))
+            foreach (TypeInstance item in AST.EnumerateTypeInstances())
             {
-                if (type is TypeInstanceStackArray arrayType
-                    && arrayType.StackArraySize is null
-                    && arrayType.CompiledType is not null
-                    && arrayType.CompiledType.Length.HasValue)
+                if (!RangeUtils.Overlaps(range, item.Position.Range)) continue;
+
+                foreach (TypeInstance type in EnumerateNestedTypeInstances(item))
                 {
-                    result.Add(new InlayHint()
+                    if (type is TypeInstanceStackArray arrayType
+                        && arrayType.StackArraySize is null
+                        && arrayType.CompiledType is not null
+                        && arrayType.CompiledType.Length.HasValue)
                     {
-                        Kind = InlayHintKind.Parameter,
-                        Label = new StringOrInlayHintLabelParts(arrayType.CompiledType.Length.Value.ToString()),
-                        Position = arrayType.SquareBrackets.Start.Position.Range.End.ToOmniSharp(),
-                        TextEdits = new Container<TextEdit>(new TextEdit()
+                        result.Add(new InlayHint()
                         {
-                            NewText = arrayType.CompiledType.Length.Value.ToString(),
-                            Range = new Range<SinglePosition>(arrayType.SquareBrackets.Start.Position.Range.End, arrayType.SquareBrackets.Start.Position.Range.End).ToOmniSharp(),
-                        })
-                    });
+                            Kind = InlayHintKind.Parameter,
+                            Label = new StringOrInlayHintLabelParts(arrayType.CompiledType.Length.Value.ToString()),
+                            Position = arrayType.SquareBrackets.Start.Position.Range.End.ToOmniSharp(),
+                            TextEdits = new Container<TextEdit>(new TextEdit()
+                            {
+                                NewText = arrayType.CompiledType.Length.Value.ToString(),
+                                Range = new Range<SinglePosition>(arrayType.SquareBrackets.Start.Position.Range.End, arrayType.SquareBrackets.Start.Position.Range.End).ToOmniSharp(),
+                            })
+                        });
+                    }
                 }
             }
         }
@@ -77,7 +83,7 @@ sealed partial class DocumentBBLang
                 case AnyCallExpression v:
                     {
                         if (v.Reference is null) continue;
-                        if (v.Reference.TypeArguments is not null && v.Reference.Function.Definition.Template is not null)
+                        if (templateHints && v.Reference.TypeArguments is not null && v.Reference.Function.Definition.Template is not null)
                         {
                             List<InlayHintLabelPart> parts = [];
                             foreach (Token i in v.Reference.Function.Definition.Template.Parameters)
@@ -87,7 +93,13 @@ sealed partial class DocumentBBLang
                                 parts.Add(new()
                                 {
                                     Value = w is null ? "?" : w.ToString(),
-                                    Location = new LanguageCore.Location(i.Position, v.Reference.Function.Definition.File).ToOmniSharp(),
+                                    Location = w switch
+                                    {
+                                        AliasType x => x.Definition.Location.ToOmniSharp(),
+                                        StructType x => x.Struct.Location.ToOmniSharp(),
+                                        EnumType x => x.Definition.Location.ToOmniSharp(),
+                                        _ => null,
+                                    },
                                 });
                             }
                             parts.Insert(0, new() { Value = "<" });
@@ -100,58 +112,69 @@ sealed partial class DocumentBBLang
                             });
                         }
 
-                        int j = v.Expression is FieldExpression ? 1 : 0;
-                        for (int i = 0; i < v.Arguments.Arguments.Length; i++)
+                        if (parameterNameHints)
                         {
-                            ArgumentExpression a = v.Arguments.Arguments[i];
-                            ParameterDefinition b = v.Reference.Function.Definition.Parameters[i + j];
-                            result.Add(new()
+                            int j = v.Expression is FieldExpression ? 1 : 0;
+                            for (int i = 0; i < v.Arguments.Arguments.Length; i++)
                             {
-                                Kind = InlayHintKind.Parameter,
-                                Label = new StringOrInlayHintLabelParts([
-                                    new() { Value = b.Identifier.Content, Location = new LanguageCore.Location(b.Identifier.Position, b.File).ToOmniSharp() },
+                                ArgumentExpression a = v.Arguments.Arguments[i];
+                                ParameterDefinition b = v.Reference.Function.Definition.Parameters[i + j];
+                                result.Add(new()
+                                {
+                                    Kind = InlayHintKind.Parameter,
+                                    Label = new StringOrInlayHintLabelParts([
+                                        new() { Value = b.Identifier.Content, Location = new LanguageCore.Location(b.Identifier.Position, b.File).ToOmniSharp() },
                                     new() { Value = ":" },
                                 ]),
-                                Position = a.Position.Range.Start.ToOmniSharp(),
-                                PaddingRight = true,
-                            });
+                                    Position = a.Position.Range.Start.ToOmniSharp(),
+                                    PaddingRight = true,
+                                });
+                            }
                         }
                         break;
                     }
                 case IndexCallExpression v:
                     {
                         if (v.Reference is null) continue;
-                        ArgumentExpression a = v.Index;
-                        ParameterDefinition b = v.Reference.Definition.Parameters[1];
-                        result.Add(new()
+
+                        if (parameterNameHints)
                         {
-                            Kind = InlayHintKind.Parameter,
-                            Label = new StringOrInlayHintLabelParts([
-                                new() { Value = b.Identifier.Content, Location = new LanguageCore.Location(b.Identifier.Position, b.File).ToOmniSharp() },
-                                new() { Value = ":" },
-                            ]),
-                            Position = a.Position.Range.Start.ToOmniSharp(),
-                            PaddingRight = true,
-                        });
-                        break;
-                    }
-                case ConstructorCallExpression v:
-                    {
-                        if (v.Reference is null) continue;
-                        for (int i = 0; i < v.Arguments.Arguments.Length; i++)
-                        {
-                            ArgumentExpression a = v.Arguments.Arguments[i];
-                            ParameterDefinition b = v.Reference.Definition.Parameters[i];
+                            ArgumentExpression a = v.Index;
+                            ParameterDefinition b = v.Reference.Definition.Parameters[1];
                             result.Add(new()
                             {
                                 Kind = InlayHintKind.Parameter,
                                 Label = new StringOrInlayHintLabelParts([
                                     new() { Value = b.Identifier.Content, Location = new LanguageCore.Location(b.Identifier.Position, b.File).ToOmniSharp() },
-                                    new() { Value = ":" },
-                                ]),
+                                new() { Value = ":" },
+                            ]),
                                 Position = a.Position.Range.Start.ToOmniSharp(),
                                 PaddingRight = true,
                             });
+                        }
+                        break;
+                    }
+                case ConstructorCallExpression v:
+                    {
+                        if (v.Reference is null) continue;
+
+                        if (parameterNameHints)
+                        {
+                            for (int i = 0; i < v.Arguments.Arguments.Length; i++)
+                            {
+                                ArgumentExpression a = v.Arguments.Arguments[i];
+                                ParameterDefinition b = v.Reference.Definition.Parameters[i];
+                                result.Add(new()
+                                {
+                                    Kind = InlayHintKind.Parameter,
+                                    Label = new StringOrInlayHintLabelParts([
+                                        new() { Value = b.Identifier.Content, Location = new LanguageCore.Location(b.Identifier.Position, b.File).ToOmniSharp() },
+                                    new() { Value = ":" },
+                                ]),
+                                    Position = a.Position.Range.Start.ToOmniSharp(),
+                                    PaddingRight = true,
+                                });
+                            }
                         }
                         break;
                     }
