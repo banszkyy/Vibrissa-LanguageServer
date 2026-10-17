@@ -6,7 +6,7 @@ using LanguageCore.Parser.Statements;
 
 namespace LanguageServer.DocumentManagers;
 
-sealed partial class DocumentBBLang
+sealed partial class DocumentVibrissa
 {
     public override async Task<IEnumerable<CommandOrCodeAction>?> CodeAction(CodeActionParams request, CancellationToken cancellationToken)
     {

@@ -7,7 +7,7 @@ using LanguageCore.Parser.Statements;
 
 namespace LanguageServer.DocumentManagers;
 
-sealed partial class DocumentBBLang
+sealed partial class DocumentVibrissa
 {
     public override async Task<IEnumerable<CompletionItem>?> Completion(CompletionParams e, CancellationToken cancellationToken)
     {
@@ -275,7 +275,7 @@ sealed partial class DocumentBBLang
 
                     foreach (string file in Directory.GetFiles(dir))
                     {
-                        if (!file.EndsWith($".{LanguageConstants.LanguageExtension}")) continue;
+                        if (!file.EndsWith(LanguageConstants.LanguageExtension)) continue;
 
                         result.Add(new CompletionItem()
                         {

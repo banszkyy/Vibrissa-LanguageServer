@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <AssemblyName>bblang_languageserver</AssemblyName>
+    <AssemblyName>vibrissa_languageserver</AssemblyName>
     <OutputType>Exe</OutputType>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>

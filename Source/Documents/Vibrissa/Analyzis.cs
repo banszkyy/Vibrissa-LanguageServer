@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using LanguageCore;
-using LanguageCore.BBLang.Generator;
+using LanguageCore.Bytecode.Generator;
 using LanguageCore.Compiler;
 using LanguageCore.Parser;
 using LanguageCore.Runtime;
@@ -21,7 +21,7 @@ enum CompilationReason
     Requested,
 }
 
-partial class DocumentBBLang
+partial class DocumentVibrissa
 {
     static readonly ConcurrentDictionary<Uri, CacheItem> Cache = new();
 
@@ -87,13 +87,13 @@ partial class DocumentBBLang
 
         Logger.Debug($"Compiling {CurrentlyCompilingVersion}");
 
-        OmniSharpService.Instance?.Server?.SendNotification<CompilerStatusNotificationArgs>("bblang/compiler/status", new()
+        OmniSharpService.Instance?.Server?.SendNotification<CompilerStatusNotificationArgs>("meow/compiler/status", new()
         {
             Status = "working",
             Details = $"{System.IO.Path.GetFileName(Uri.LocalPath)} {CurrentlyCompilingVersion}",
         });
 
-        BBLangProject? project = null;
+        VibrissaProject? project = null;
 
         try
         {
@@ -111,14 +111,14 @@ partial class DocumentBBLang
                 config = Configuration.Parse(configurationPath, diagnostics, new Logger());
                 Logger.Trace($"    Configuation parsed");
 
-                if (BBLangProject.Projects.TryGetValue(configurationPath, out project))
+                if (VibrissaProject.Projects.TryGetValue(configurationPath, out project))
                 {
                     project.Configuration = config;
                     project.ConfigurationPath = configurationPath;
                 }
                 else
                 {
-                    BBLangProject.Projects[configurationPath] = project = new BBLangProject()
+                    VibrissaProject.Projects[configurationPath] = project = new VibrissaProject()
                     {
                         Configuration = config,
                         ConfigurationPath = configurationPath,
@@ -128,7 +128,7 @@ partial class DocumentBBLang
                     {
                         if (configurationPath.IsFile)
                         {
-                            foreach (string item in System.IO.Directory.EnumerateFiles(projectRoot.LocalPath, "*.bbc", System.IO.SearchOption.AllDirectories))
+                            foreach (string item in System.IO.Directory.EnumerateFiles(projectRoot.LocalPath, $"*{LanguageCore.LanguageConstants.LanguageExtension}", System.IO.SearchOption.AllDirectories))
                             {
                                 project.Files.Add(new Uri(item, UriKind.Absolute));
                             }
@@ -147,7 +147,7 @@ partial class DocumentBBLang
 
             if (project is not null)
             {
-                OmniSharpService.Instance?.Server?.SendNotification<ProjectStatusNotificationArgs>("bblang/project/status", new()
+                OmniSharpService.Instance?.Server?.SendNotification<ProjectStatusNotificationArgs>("meow/project/status", new()
                 {
                     ProjectType = project.Configuration.IsProject ? "project" : "file",
                     ContextFile = Uri.ToString(),
@@ -157,7 +157,7 @@ partial class DocumentBBLang
             }
             else
             {
-                OmniSharpService.Instance?.Server?.SendNotification<ProjectStatusNotificationArgs>("bblang/project/status", new()
+                OmniSharpService.Instance?.Server?.SendNotification<ProjectStatusNotificationArgs>("meow/project/status", new()
                 {
                     ProjectType = null,
                     ContextFile = Uri.ToString(),
@@ -359,7 +359,7 @@ partial class DocumentBBLang
                 });
             }
 
-            OmniSharpService.Instance?.Server?.SendNotification<CompilerStatusNotificationArgs>("bblang/compiler/status", new()
+            OmniSharpService.Instance?.Server?.SendNotification<CompilerStatusNotificationArgs>("meow/compiler/status", new()
             {
                 Status = "done",
             });
@@ -369,8 +369,8 @@ partial class DocumentBBLang
 #pragma warning restore CA1031 // Do not catch general exception types
         {
             Logger.Error(ex);
-            OmniSharpService.Instance?.Server?.Window?.ShowError($"BBLang {ex.GetType().Name}: {ex.Message}");
-            OmniSharpService.Instance?.Server?.SendNotification<CompilerStatusNotificationArgs>("bblang/compiler/status", new()
+            OmniSharpService.Instance?.Server?.Window?.ShowError($"Vibrissa {ex.GetType().Name}: {ex.Message}");
+            OmniSharpService.Instance?.Server?.SendNotification<CompilerStatusNotificationArgs>("meow/compiler/status", new()
             {
                 Status = "failed",
                 Details = $"{ex.GetType().Name}: {ex.Message}",

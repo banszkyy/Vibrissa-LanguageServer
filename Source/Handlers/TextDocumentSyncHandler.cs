@@ -4,7 +4,7 @@ namespace LanguageServer.Handlers;
 
 sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
 {
-    static readonly TextDocumentSelector DocumentSelector = new(new TextDocumentFilter() { Pattern = $"**/*.{LanguageCore.LanguageConstants.LanguageExtension}" });
+    static readonly TextDocumentSelector DocumentSelector = new(new TextDocumentFilter() { Pattern = $"**/*{LanguageCore.LanguageConstants.LanguageExtension}" });
 
     public static TextDocumentChangeRegistrationOptions GetRegistrationOptions() => new()
     {

@@ -66,12 +66,12 @@ sealed class OmniSharpService
            .WithHandler<TypeDefinitionHandler>()
 
            .WithHandler<TextDocumentSyncHandler>()
-           //.WithHandler<NotebookDocumentSyncHandler>()
+        //.WithHandler<NotebookDocumentSyncHandler>()
         ;
 
-        options.AddHandler<RecompileHandler>("bblang/compiler/recompile");
+        options.AddHandler<RecompileHandler>("meow/compiler/recompile");
 
-        options.AddHandler<DecorationsHandler>("bblang/decorations");
+        options.AddHandler<DecorationsHandler>("meow/decorations");
 
         options.OnInitialize((server, request, cancellationToken) =>
         {

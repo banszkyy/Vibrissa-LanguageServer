@@ -7,7 +7,7 @@ using Range = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
 namespace LanguageServer;
 
-[Parallel, Method("bblang/decorations", Direction.ClientToServer)]
+[Parallel, Method("meow/decorations", Direction.ClientToServer)]
 public sealed record AllocationsParams : IRequest<AllocationsResult>
 {
     public TextDocumentIdentifier TextDocument { get; init; } = null!;

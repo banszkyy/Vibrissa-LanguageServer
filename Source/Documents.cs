@@ -19,13 +19,13 @@ sealed class Documents : ISourceProviderSync, ISourceQueryProvider, IVersionProv
 
     public static DocumentBase GenerateDocument(DocumentUri uri, string? content, string languageId, Documents documentInterface) => languageId switch
     {
-        LanguageConstants.LanguageId => new DocumentBBLang(uri, content, languageId, documentInterface),
+        LanguageConstants.LanguageId => new DocumentVibrissa(uri, content, languageId, documentInterface),
         _ => throw new ServiceException($"Unknown language \"{languageId}\"")
     };
 
     public static NotebookBase GenerateNotebook(DocumentUri uri, string languageId, Documents documentInterface) => languageId switch
     {
-        LanguageConstants.LanguageId => new NotebookBBLang(uri, languageId, documentInterface),
+        LanguageConstants.LanguageId => new NotebookVibrissa(uri, languageId, documentInterface),
         _ => throw new ServiceException($"Unknown language \"{languageId}\"")
     };
 
@@ -135,9 +135,9 @@ sealed class Documents : ISourceProviderSync, ISourceQueryProvider, IVersionProv
 
     public IEnumerable<Uri> GetQuery(string requestedFile, Uri? currentFile)
     {
-        if (!requestedFile.EndsWith($".{LanguageConstants.LanguageExtension}", StringComparison.Ordinal))
+        if (!requestedFile.EndsWith(LanguageConstants.LanguageExtension, StringComparison.Ordinal))
         {
-            requestedFile += $".{LanguageConstants.LanguageExtension}";
+            requestedFile += LanguageConstants.LanguageExtension;
         }
 
         if (Uri.TryCreate(currentFile, requestedFile, out Uri? uri))

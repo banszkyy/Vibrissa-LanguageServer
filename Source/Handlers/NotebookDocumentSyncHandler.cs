@@ -48,7 +48,7 @@ sealed class NotebookDocumentSyncHandler : NotebookDocumentSyncHandlerBase
         {
             Notebook = new NotebookDocumentFilter()
             {
-                NotebookType = "bblang-notebook"
+                NotebookType = $"{LanguageCore.LanguageConstants.LanguageId}-notebook"
             },
         },
     };

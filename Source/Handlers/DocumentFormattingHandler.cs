@@ -21,7 +21,7 @@ sealed class DocumentFormattingHandler : IDocumentFormattingHandler
         }
         catch (ServiceException error)
         {
-            OmniSharpService.Instance.Server?.Window?.ShowWarning($"BBLang ServiceException: {error.Message}");
+            OmniSharpService.Instance.Server?.Window?.ShowWarning($"ServiceException: {error.Message}");
             return null;
         }
     }

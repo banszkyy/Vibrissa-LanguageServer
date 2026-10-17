@@ -8,7 +8,7 @@ using Position = LanguageCore.Position;
 
 namespace LanguageServer.DocumentManagers;
 
-sealed partial class DocumentBBLang
+sealed partial class DocumentVibrissa
 {
     static bool GetGotoDefinition(object? reference, [NotNullWhen(true)] out LocationLink? result)
     {

@@ -5,7 +5,7 @@ using OmniSharpLocation = OmniSharp.Extensions.LanguageServer.Protocol.Models.Lo
 
 namespace LanguageServer.DocumentManagers;
 
-sealed partial class DocumentBBLang
+sealed partial class DocumentVibrissa
 {
     public override async Task<IEnumerable<OmniSharpLocation>?> References(ReferenceParams e, CancellationToken cancellationToken)
     {

@@ -8,7 +8,7 @@ using LanguageCore.Tokenizing;
 
 namespace LanguageServer.DocumentManagers;
 
-sealed partial class DocumentBBLang
+sealed partial class DocumentVibrissa
 {
     string? GetCommentDocumentation(ILocated definition)
         => GetCommentDocumentation(definition, out string? result) ? result : null;
@@ -25,9 +25,9 @@ sealed partial class DocumentBBLang
         ImmutableArray<Token> tokens;
 
         if (Documents.TryGet(file, out DocumentBase? document) &&
-            document is DocumentBBLang documentBBLang)
+            document is DocumentVibrissa documentVibrissa)
         {
-            tokens = documentBBLang.Tokens;
+            tokens = documentVibrissa.Tokens;
         }
         else
         {

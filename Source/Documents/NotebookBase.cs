@@ -49,7 +49,7 @@ abstract class NotebookBase
 
         NotebookType = e.NotebookDocument.NotebookType;
         DocumentUri = e.NotebookDocument.Uri;
-        LanguageId = "bbc";
+        LanguageId = LanguageCore.LanguageConstants.LanguageId;
         Version = e.NotebookDocument.Version;
     }
 

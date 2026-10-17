@@ -9,7 +9,7 @@ using Position = LanguageCore.Position;
 
 namespace LanguageServer.DocumentManagers;
 
-sealed partial class DocumentBBLang
+sealed partial class DocumentVibrissa
 {
     static string? GetTypeHover(GeneralType type) => type switch
     {

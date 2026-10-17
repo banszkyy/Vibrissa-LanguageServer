@@ -8,7 +8,7 @@ using Position = LanguageCore.Position;
 
 namespace LanguageServer.DocumentManagers;
 
-sealed partial class DocumentBBLang
+sealed partial class DocumentVibrissa
 {
     public override async Task<SignatureHelp?> SignatureHelp(SignatureHelpParams e, CancellationToken cancellationToken)
     {

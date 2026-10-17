@@ -20,7 +20,7 @@ sealed class InlayHintsHandler : IInlayHintsHandler
         }
         catch (ServiceException error)
         {
-            OmniSharpService.Instance.Server?.Window?.ShowWarning($"BBLang ServiceException: {error.Message}");
+            OmniSharpService.Instance.Server?.Window?.ShowWarning($"ServiceException: {error.Message}");
             return null;
         }
     }

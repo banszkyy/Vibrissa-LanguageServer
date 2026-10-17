@@ -1,6 +1,6 @@
 namespace LanguageServer.DocumentManagers;
 
-sealed partial class DocumentBBLang
+sealed partial class DocumentVibrissa
 {
     public override void OnChanged(DidChangeTextDocumentParams e)
     {

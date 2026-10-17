@@ -3,7 +3,7 @@ using LanguageCore.Parser;
 
 namespace LanguageServer.DocumentManagers;
 
-sealed partial class DocumentBBLang
+sealed partial class DocumentVibrissa
 {
     public override async Task<IEnumerable<CodeLens>?> CodeLens(CodeLensParams e, CancellationToken cancellationToken)
     {

@@ -6,12 +6,12 @@ rm -rf ./out
 
 dotnet publish --configuration Release --output ./out/linux-x64 -r linux-x64 -p:DebugType=none
 cd ./out/linux-x64
-zip ../linux-x64.zip bblang_languageserver
+zip ../linux-x64.zip vibrissa_languageserver
 cd ../..
 rm -rf ./out/linux-x64
 
 dotnet publish --configuration Release --output ./out/win-x64 -r win-x64 -p:DebugType=none
 cd ./out/win-x64
-zip ../win-x64.zip bblang_languageserver.exe
+zip ../win-x64.zip vibrissa_languageserver.exe
 cd ../..
 rm -rf ./out/win-x64
