@@ -8,6 +8,7 @@ using LanguageCore.Parser;
 using LanguageCore.Runtime;
 using LanguageCore.Tokenizing;
 using LanguageCore.Workspaces;
+using OmniSharp.Extensions.LanguageServer.Protocol.Server.WorkDone;
 using Diagnostic = LanguageCore.Diagnostic;
 
 namespace LanguageServer.DocumentManagers;
@@ -32,6 +33,7 @@ partial class DocumentVibrissa
     public CompilerSettings CompilerSettings;
 
     Task<bool>? CompilationTask;
+    CancellationTokenSource? CompilationTaskCTS;
     DocumentVersion CompiledVersion;
     DocumentVersion CurrentlyCompilingVersion;
     CompilationReason CompilationReason;
@@ -50,17 +52,19 @@ partial class DocumentVibrissa
 
         CompilationTask = Task.Run(async () =>
         {
-            await Task.Delay(150).ConfigureAwait(false);
+            await Task.Delay(500).ConfigureAwait(false);
 
             if (!force && CompiledVersion == DesiredCompiledVersion) return false;
 
             CompilationReason = reason;
-            await CompileAsync().ConfigureAwait(false);
+            CompilationTaskCTS = new();
+            CompileAsync(CompilationTaskCTS.Token);
             CompilationReason = CompilationReason.None;
+            CompilationTaskCTS = null;
 
             if (DesiredCompiledVersion != CompiledVersion)
             {
-                RequestCompilation(DesiredCompiledVersion, reason);
+                RequestCompilation(DesiredCompiledVersion, reason, force: false);
             }
 
             return true;
@@ -71,6 +75,7 @@ partial class DocumentVibrissa
     Task<bool> AwaitForCompilation(DocumentVersion? version, CancellationToken cancellationToken, bool force = true) => AwaitForCompilation(version ?? DocumentVersion.Zero(0), cancellationToken, force);
     Task<bool> AwaitForCompilation(DocumentVersion version, CancellationToken cancellationToken, bool force = true)
     {
+        Logger.Trace($"Validating version {version}{(force ? " (force)" : null)}");
         if (!force && (CompilationReason is CompilationReason.Requested or CompilationReason.None))
         {
             Logger.Trace($"Skipping validation");
@@ -81,7 +86,7 @@ partial class DocumentVibrissa
         return CompilationTask.WaitAsync(cancellationToken);
     }
 
-    async Task CompileAsync()
+    void CompileAsync(CancellationToken cancellationToken)
     {
         CurrentlyCompilingVersion = Version ?? DocumentVersion.Zero(0);
 
@@ -205,6 +210,7 @@ partial class DocumentVibrissa
                 Cache = Cache,
                 OptimizationDiagnostics = true,
                 SourcePartiallyAvaliable = true,
+                CancellationToken = cancellationToken,
             };
             HashSet<Uri> compiledFiles;
             CompilerResult compilerResult = CompilerResult.MakeEmpty(Uri);

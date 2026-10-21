@@ -11,7 +11,7 @@ sealed partial class DocumentVibrissa
 {
     public override async Task<IEnumerable<CompletionItem>?> Completion(CompletionParams e, CancellationToken cancellationToken)
     {
-        await AwaitForCompilation(Version, cancellationToken, false).ConfigureAwait(false);
+        await AwaitForCompilation(Version, cancellationToken).ConfigureAwait(false);
 
         List<CompletionItem> result = new();
 
@@ -87,6 +87,7 @@ sealed partial class DocumentVibrissa
                                 _ => $"{overloads.Count} overloads",
                             },
                         },
+                        CommitCharacters = new(["("]),
                     });
                 }
             }
@@ -157,8 +158,7 @@ sealed partial class DocumentVibrissa
         foreach (AttributeUsage? attribute in
             AST.AliasDefinitions.Cast<IHaveAttributes>()
             .Append(AST.Structs)
-            .Append(AST.Functions)
-            .Append(AST.Operators)
+            .Append(AST.AllFunctions)
             .Append(AST.EnumDefinitions)
             .Append(AST.EnumerateStatements().OfType<IHaveAttributes>())
             .SelectMany(v => v.Attributes)
@@ -294,10 +294,16 @@ sealed partial class DocumentVibrissa
             GeneralType? objectType = null;
             Expression? objectExpression = null;
 
+            if (statement.Position.Range.Contains(p))
+            {
+                Logger.Debug($"???: `{statement.GetType().Name}` `{statement}`");
+            }
+
             if (statement is FieldExpression fieldExpression
-                && fieldExpression.Identifier.Position.Range.Contains(p))
+                && fieldExpression.Position.Range.Contains(p))
             {
                 objectExpression = fieldExpression.Object;
+                Logger.Debug($"Object: `{objectExpression}`");
             }
 
             if (statement is IdentifierExpression identifierExpression
@@ -307,6 +313,7 @@ sealed partial class DocumentVibrissa
                 && e.Context.TriggerCharacter == ".")
             {
                 objectExpression = identifierExpression;
+                Logger.Debug($"Object: `{objectExpression}`");
             }
 
             if (objectExpression is not null)
@@ -317,6 +324,8 @@ sealed partial class DocumentVibrissa
                     {
                         if (enumDefinition.Identifier != objectIdentifierExpression.Content) continue;
                         if (!enumDefinition.Definition.CanUse(Uri)) continue;
+
+                        Logger.Debug($"Object is an enum type");
 
                         foreach (CompiledEnumMember enumMember in enumDefinition.Members)
                         {
@@ -338,6 +347,8 @@ sealed partial class DocumentVibrissa
                         if (enumDefinition.Identifier.Content != objectIdentifierExpression.Content) continue;
                         if (!enumDefinition.CanUse(Uri)) continue;
 
+                        Logger.Debug($"Object is an enum type");
+
                         foreach (EnumMemberDefinition enumMember in enumDefinition.Members)
                         {
                             result.Add(new CompletionItem()
@@ -353,6 +364,7 @@ sealed partial class DocumentVibrissa
                 if (objectExpression.CompiledType is not null)
                 {
                     objectType = objectExpression.CompiledType;
+                    Logger.Debug($"Object type: `{objectType}`");
                 }
                 else
                 {
@@ -455,6 +467,39 @@ sealed partial class DocumentVibrissa
                 AddExpressionItems();
                 return result;
             }
+        }
+
+        foreach (var s in AST.Structs)
+        {
+            if (s.File != Uri) continue;
+            if (!s.Position.Range.Contains(p)) continue;
+
+            foreach (var f in
+                s.Functions
+                .Cast<FunctionThingDefinition>()
+                .Append(s.Constructors)
+                .Append(s.GeneralFunctions)
+                .Append(s.Operators))
+            {
+                if (!s.Position.Range.Contains(p)) continue;
+
+                goto _;
+            }
+
+            foreach (var f in
+                s.Fields)
+            {
+                if (!s.Position.Range.Contains(p)) continue;
+
+                goto _;
+            }
+
+            AddTypeItems();
+
+            result.AddRange(ProtectionKeywords.List.Select(v => new CompletionItem() { Kind = CompletionItemKind.Keyword, Label = v }));
+            result.AddRange(ModifierKeywords.List.Select(v => new CompletionItem() { Kind = CompletionItemKind.Keyword, Label = v }));
+            return result;
+        _:;
         }
 
         AddExpressionItems();

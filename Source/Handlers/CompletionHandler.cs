@@ -31,7 +31,12 @@ sealed class CompletionHandler : ICompletionHandler
         {
             DocumentSelector = TextDocumentSelector.ForLanguage(LanguageCore.LanguageConstants.LanguageId),
             ResolveProvider = false,
-            TriggerCharacters = new string[] { "." },
+            TriggerCharacters = new string[] { ".", "(" },
+            AllCommitCharacters = new string[] { ".", "(" },
+            CompletionItem = new()
+            {
+                LabelDetailsSupport = true,
+            },
         };
     }
 }

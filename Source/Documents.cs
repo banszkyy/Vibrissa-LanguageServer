@@ -17,15 +17,17 @@ sealed class Documents : ISourceProviderSync, ISourceQueryProvider, IVersionProv
         _notebooks = new List<NotebookBase>();
     }
 
-    public static DocumentBase GenerateDocument(DocumentUri uri, string? content, string languageId, Documents documentInterface) => languageId switch
+    public static DocumentBase GenerateDocument(DocumentUri uri, string? content, string? languageId, Documents documentInterface) => languageId switch
     {
         LanguageConstants.LanguageId => new DocumentVibrissa(uri, content, languageId, documentInterface),
-        _ => throw new ServiceException($"Unknown language \"{languageId}\"")
+        null => throw new ServiceException($"Language id not provided"),
+        _ => throw new ServiceException($"Unknown language \"{languageId}\""),
     };
 
-    public static NotebookBase GenerateNotebook(DocumentUri uri, string languageId, Documents documentInterface) => languageId switch
+    public static NotebookBase GenerateNotebook(DocumentUri uri, string? languageId, Documents documentInterface) => languageId switch
     {
         LanguageConstants.LanguageId => new NotebookVibrissa(uri, languageId, documentInterface),
+        null => throw new ServiceException($"Language id not provided"),
         _ => throw new ServiceException($"Unknown language \"{languageId}\"")
     };
 
@@ -92,14 +94,14 @@ sealed class Documents : ISourceProviderSync, ISourceQueryProvider, IVersionProv
         }
     }
 
-    public DocumentBase GetOrCreate(DocumentUri documentId, string? content = null)
+    public DocumentBase GetOrCreate(DocumentUri documentId, string? languageId, string? content = null)
     {
         RemoveDuplicates();
 
         if (TryGet(documentId, out DocumentBase? document))
         { return document; }
 
-        Logger.Debug($"[Docs] Register ({documentId})");
+        Logger.Debug($"[Docs] Registering {documentId} lang:{languageId} content:{content?.Length}");
 
         if (documentId.Scheme == "file")
         {
@@ -112,13 +114,13 @@ sealed class Documents : ISourceProviderSync, ISourceQueryProvider, IVersionProv
             }
         }
 
-        document = GenerateDocument(documentId, content, documentId.GetExtension(), this);
+        document = GenerateDocument(documentId, content, languageId, this);
         _documents.Add(document);
 
         return document;
     }
 
-    public NotebookBase GetOrCreateNotebook(DocumentUri documentId)
+    public NotebookBase GetOrCreateNotebook(DocumentUri documentId, string? languageId)
     {
         RemoveDuplicates();
 
@@ -127,7 +129,7 @@ sealed class Documents : ISourceProviderSync, ISourceQueryProvider, IVersionProv
 
         Logger.Debug($"[Docs] Register notebook ({documentId})");
 
-        document = GenerateNotebook(documentId, documentId.GetExtension(), this);
+        document = GenerateNotebook(documentId, languageId, this);
         _notebooks.Add(document);
 
         return document;

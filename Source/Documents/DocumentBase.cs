@@ -52,13 +52,7 @@ abstract class DocumentBase
             }
         }
 
-        string? text = e.ContentChanges.FirstOrDefault()?.Text;
-
-        if (text != null)
-        {
-            Logger.Debug($"[DocBuffer] Updated ({e.TextDocument}) ({text.Length})");
-            Content = text;
-        }
+        Content = e.ContentChanges.FirstOrDefault()?.Text ?? Content;
 
         DocumentUri = e.TextDocument.Uri;
         LanguageId = e.TextDocument.Uri.GetExtension();
@@ -95,6 +89,7 @@ abstract class DocumentBase
     public virtual Task<IEnumerable<TextEdit>?> DocumentFormatting(DocumentFormattingParams request, CancellationToken cancellationToken) => Task.FromResult<IEnumerable<TextEdit>?>(null);
     public virtual Task<bool> Recompile(RecompileParams request, CancellationToken cancellationToken) => Task.FromResult<bool>(false);
     public virtual Task<IEnumerable<AllocationItem>?> Decorations(AllocationsParams request, CancellationToken cancellationToken) => Task.FromResult<IEnumerable<AllocationItem>?>(null);
+    public virtual Task<IEnumerable<TextEdit>?> OnTypeFormatting(DocumentOnTypeFormattingParams request, CancellationToken cancellationToken) => Task.FromResult<IEnumerable<TextEdit>?>(null);
 
     public override string ToString() => $"{Path}";
 }

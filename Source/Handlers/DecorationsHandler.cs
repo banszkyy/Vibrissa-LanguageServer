@@ -19,7 +19,7 @@ sealed class DecorationsHandler : IJsonRpcRequestHandler<AllocationsParams, Allo
         {
             return new AllocationsResult()
             {
-                Items = (await document.Decorations(request, cancellationToken).ConfigureAwait(false))?.ToArray() ?? [],
+                Items = (await document.Decorations(request, cancellationToken).ConfigureAwait(false))?.ToArray(),
                 Version = document.Version?.Version ?? 0,
             };
         }

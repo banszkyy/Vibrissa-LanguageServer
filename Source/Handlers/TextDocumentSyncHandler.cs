@@ -18,7 +18,7 @@ sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
     {
         Logger.Debug($"[DocSync] Opened ({request.TextDocument})");
 
-        OmniSharpService.Instance?.Documents.GetOrCreate(request.TextDocument.Uri).OnOpened(request);
+        OmniSharpService.Instance?.Documents.GetOrCreate(request.TextDocument.Uri, languageId: request.TextDocument.LanguageId).OnOpened(request);
 
         return Unit.Task;
     }
@@ -27,7 +27,7 @@ sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
     {
         Logger.Debug($"[DocSync] Changed ({request.TextDocument})");
 
-        OmniSharpService.Instance?.Documents.GetOrCreate(request.TextDocument.Uri).OnChanged(request);
+        OmniSharpService.Instance?.Documents.GetOrCreate(request.TextDocument.Uri, languageId: null).OnChanged(request);
 
         return Unit.Task;
     }
@@ -36,7 +36,7 @@ sealed class TextDocumentSyncHandler : TextDocumentSyncHandlerBase
     {
         Logger.Debug($"[DocSync] Saved ({request.TextDocument})");
 
-        OmniSharpService.Instance?.Documents.GetOrCreate(request.TextDocument.Uri).OnSaved(request);
+        OmniSharpService.Instance?.Documents.GetOrCreate(request.TextDocument.Uri, languageId: null).OnSaved(request);
 
         return Unit.Task;
     }

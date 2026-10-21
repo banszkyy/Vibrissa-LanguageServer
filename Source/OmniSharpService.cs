@@ -37,12 +37,12 @@ sealed class OmniSharpService
             .WithOutput(Console.OpenStandardOutput());
 #pragma warning restore CA2000 // Dispose objects before losing scope
 
-        options
-            .ConfigureLogging(
-               x => x
-                   .AddLanguageProtocolLogging()
-                   .SetMinimumLevel(LogLevel.Information)
-           );
+        //options
+        //    .ConfigureLogging(
+        //       x => x
+        //           .AddLanguageProtocolLogging()
+        //           .SetMinimumLevel(LogLevel.Information)
+        //    );
 
         options
            .WithServices(x => x.AddLogging(b => b.SetMinimumLevel(LogLevel.Trace)));
@@ -60,12 +60,13 @@ sealed class OmniSharpService
            .WithHandler<HoverHandler>()
            .WithHandler<ImplementationHandler>()
            .WithHandler<InlayHintsHandler>()
+           .WithHandler<InlineValuesHandler>()
            .WithHandler<ReferencesHandler>()
            .WithHandler<SemanticTokensHandler>()
            .WithHandler<SignatureHelpHandler>()
            .WithHandler<TypeDefinitionHandler>()
-
            .WithHandler<TextDocumentSyncHandler>()
+           .WithHandler<DocumentOnTypeFormattingHandler>()
         //.WithHandler<NotebookDocumentSyncHandler>()
         ;
 

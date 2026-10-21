@@ -35,7 +35,7 @@ abstract class NotebookBase
 
         foreach (TextDocumentItem item in e.CellTextDocuments)
         {
-            Documents.GetOrCreate(item.Uri, item.Text).OnOpened(new DidOpenTextDocumentParams()
+            Documents.GetOrCreate(item.Uri, languageId: item.LanguageId, content: item.Text).OnOpened(new DidOpenTextDocumentParams()
             {
                 TextDocument = item,
             });
@@ -97,7 +97,7 @@ abstract class NotebookBase
                 {
                     Logger.Debug($"[NotebookBuffer]    - Opening cell {cell.Uri}");
 
-                    Documents.GetOrCreate(cell.Uri, cell.Text).OnOpened(new DidOpenTextDocumentParams() { TextDocument = cell });
+                    Documents.GetOrCreate(cell.Uri, languageId: cell.LanguageId, content: cell.Text).OnOpened(new DidOpenTextDocumentParams() { TextDocument = cell });
                 }
             }
         }
@@ -121,7 +121,7 @@ abstract class NotebookBase
             }
         }
 
-        Documents.GetOrCreate(e.Change.Cells.TextContent.Document.Uri).OnChanged(new DidChangeTextDocumentParams()
+        Documents.GetOrCreate(e.Change.Cells.TextContent.Document.Uri, languageId: null).OnChanged(new DidChangeTextDocumentParams()
         {
             TextDocument = new OptionalVersionedTextDocumentIdentifier()
             {

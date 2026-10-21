@@ -16,7 +16,7 @@ public sealed record AllocationsParams : IRequest<AllocationsResult>
 public sealed record AllocationsResult
 {
     public int Version { get; init; }
-    public IReadOnlyList<AllocationItem> Items { get; init; } = Array.Empty<AllocationItem>();
+    public IReadOnlyList<AllocationItem>? Items { get; init; }
 }
 
 public sealed record AllocationItem

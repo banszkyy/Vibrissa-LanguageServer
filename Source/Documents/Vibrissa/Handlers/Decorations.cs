@@ -14,7 +14,6 @@ sealed partial class DocumentVibrissa
         CompilerResult.EnumerateStatements(v =>
         {
             if (v is not IHaveAllocator haveAllocator) return true;
-            Logger.Error(haveAllocator.Allocator);
             if (haveAllocator.Allocator is null) return true;
             if (haveAllocator.Allocator.Location.File != Uri) return true;
             result.Add(new()

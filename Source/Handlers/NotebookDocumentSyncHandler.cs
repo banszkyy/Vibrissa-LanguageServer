@@ -10,7 +10,7 @@ sealed class NotebookDocumentSyncHandler : NotebookDocumentSyncHandlerBase
     {
         Logger.Debug($"[NotebookSync] Opened ({request.NotebookDocument.Uri})");
 
-        OmniSharpService.Instance?.Documents.GetOrCreateNotebook(request.NotebookDocument.Uri).OnOpened(request);
+        OmniSharpService.Instance?.Documents.GetOrCreateNotebook(request.NotebookDocument.Uri, languageId: null).OnOpened(request);
 
         return Task.FromResult(Unit.Value);
     }
@@ -19,7 +19,7 @@ sealed class NotebookDocumentSyncHandler : NotebookDocumentSyncHandlerBase
     {
         Logger.Debug($"[NotebookSync] Changed ({request.NotebookDocument.Uri})");
 
-        OmniSharpService.Instance?.Documents.GetOrCreateNotebook(request.NotebookDocument.Uri).OnChanged(request);
+        OmniSharpService.Instance?.Documents.GetOrCreateNotebook(request.NotebookDocument.Uri, languageId: null).OnChanged(request);
 
         return Task.FromResult(Unit.Value);
     }
@@ -28,7 +28,7 @@ sealed class NotebookDocumentSyncHandler : NotebookDocumentSyncHandlerBase
     {
         Logger.Debug($"[NotebookSync] Saved ({request.NotebookDocument.Uri})");
 
-        OmniSharpService.Instance?.Documents.GetOrCreateNotebook(request.NotebookDocument.Uri).OnSaved(request);
+        OmniSharpService.Instance?.Documents.GetOrCreateNotebook(request.NotebookDocument.Uri, languageId: null).OnSaved(request);
 
         return Task.FromResult(Unit.Value);
     }
