@@ -8,7 +8,6 @@ using LanguageCore.Parser;
 using LanguageCore.Runtime;
 using LanguageCore.Tokenizing;
 using LanguageCore.Workspaces;
-using OmniSharp.Extensions.LanguageServer.Protocol.Server.WorkDone;
 using Diagnostic = LanguageCore.Diagnostic;
 
 namespace LanguageServer.DocumentManagers;
@@ -38,6 +37,7 @@ partial class DocumentVibrissa
     DocumentVersion CurrentlyCompilingVersion;
     CompilationReason CompilationReason;
     DocumentVersion DesiredCompiledVersion;
+    StatementCompiler? Compiler;
 
     bool RequestCompilation(DocumentVersion? version, CompilationReason reason, bool force = false) => RequestCompilation(version ?? DocumentVersion.Zero(0), reason, force);
     bool RequestCompilation(DocumentVersion version, CompilationReason reason, bool force = false)
@@ -231,7 +231,12 @@ partial class DocumentVibrissa
                 }
 
                 Logger.Debug($"  Compiling:{string.Join(null, files.Select(v => $"\n   {v}"))}");
-                compilerResult = StatementCompiler.CompileFiles(files, compilerSettings, diagnostics, Logger.Instance);
+                Compiler ??= new(compilerSettings, diagnostics, Logger.Instance);
+                Compiler.Diagnostics = diagnostics;
+                Compiler.Logger = Logger.Instance;
+                compilerResult = Compiler.CompileFiles(files);
+                Compiler.IsCached = true;
+                //compilerResult = StatementCompiler.CompileFiles(files, compilerSettings, diagnostics, Logger.Instance);
                 Logger.Debug($"  Compiled");
             }
             catch (LanguageExceptionAt languageException)
