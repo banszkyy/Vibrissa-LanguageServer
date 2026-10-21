@@ -1,5 +1,4 @@
 using LanguageCore.Compiler;
-using LanguageCore.Parser;
 
 namespace LanguageServer.DocumentManagers;
 
@@ -7,7 +6,7 @@ sealed partial class DocumentVibrissa
 {
     public override async Task<IEnumerable<CodeLens>?> CodeLens(CodeLensParams e, CancellationToken cancellationToken)
     {
-        await AwaitForCompilation(Version, cancellationToken).ConfigureAwait(false);
+        //await AwaitForCompilation(Version, cancellationToken).ConfigureAwait(false);
 
         List<CodeLens> result = new();
 

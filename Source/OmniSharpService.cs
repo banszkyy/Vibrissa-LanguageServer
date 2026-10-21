@@ -67,6 +67,7 @@ sealed class OmniSharpService
            .WithHandler<TypeDefinitionHandler>()
            .WithHandler<TextDocumentSyncHandler>()
            .WithHandler<DocumentOnTypeFormattingHandler>()
+           .WithHandler<FoldingRangeHandler>()
         //.WithHandler<NotebookDocumentSyncHandler>()
         ;
 

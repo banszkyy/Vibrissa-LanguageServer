@@ -8,7 +8,7 @@ sealed partial class DocumentVibrissa
 {
     public override async Task<IEnumerable<SymbolInformationOrDocumentSymbol>?> Symbols(DocumentSymbolParams e, CancellationToken cancellationToken)
     {
-        await AwaitForCompilation(Version, cancellationToken).ConfigureAwait(false);
+        //await AwaitForCompilation(Version, cancellationToken).ConfigureAwait(false);
 
         List<SymbolInformationOrDocumentSymbol> result = new();
 

@@ -90,6 +90,7 @@ abstract class DocumentBase
     public virtual Task<bool> Recompile(RecompileParams request, CancellationToken cancellationToken) => Task.FromResult<bool>(false);
     public virtual Task<IEnumerable<AllocationItem>?> Decorations(AllocationsParams request, CancellationToken cancellationToken) => Task.FromResult<IEnumerable<AllocationItem>?>(null);
     public virtual Task<IEnumerable<TextEdit>?> OnTypeFormatting(DocumentOnTypeFormattingParams request, CancellationToken cancellationToken) => Task.FromResult<IEnumerable<TextEdit>?>(null);
+    public virtual Task<IEnumerable<FoldingRange>?> FoldingRange(FoldingRangeRequestParam request, CancellationToken cancellationToken) => Task.FromResult<IEnumerable<FoldingRange>?>(null);
 
     public override string ToString() => $"{Path}";
 }
