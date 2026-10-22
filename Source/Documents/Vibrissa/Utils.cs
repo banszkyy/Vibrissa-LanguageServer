@@ -292,12 +292,6 @@ sealed partial class DocumentVibrissa
                 .SelectMany(v => v.Parameters.Parameters.Select(v => v.Type).Append(v.Type))
             )
 
-            // Constructors
-            .Append(
-                AST.Structs.SelectMany(v => v.Constructors)
-                .SelectMany(v => v.Parameters.Parameters.Select(v => v.Type).Append(v.Type))
-            )
-
             // General functions
             .Append(
                 AST.Structs.SelectMany(v => v.GeneralFunctions)

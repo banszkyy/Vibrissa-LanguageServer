@@ -22,7 +22,6 @@ sealed partial class DocumentVibrissa
                 case CompiledFunctionDefinition v: result.Add(new LanguageCore.Location(v.Definition.Identifier.Position, v.Definition.File).ToOmniSharp()); break;
                 case CompiledGeneralFunctionDefinition v: result.Add(new LanguageCore.Location(v.Definition.Identifier.Position, v.Definition.File).ToOmniSharp()); break;
                 case CompiledOperatorDefinition v: result.Add(new LanguageCore.Location(v.Definition.Identifier.Position, v.Definition.File).ToOmniSharp()); break;
-                case CompiledConstructorDefinition v: result.Add(new LanguageCore.Location(v.Definition.Identifier.Position, v.Definition.File).ToOmniSharp()); break;
                 case CompiledAlias v: result.Add(new LanguageCore.Location(v.Definition.Identifier.Position, v.Definition.File).ToOmniSharp()); break;
                 case CompiledEnum v: result.Add(new LanguageCore.Location(v.Definition.Identifier.Position, v.Definition.File).ToOmniSharp()); break;
                 case CompiledEnumMember v: result.Add(new LanguageCore.Location(v.Definition.Identifier.Position, v.Definition.File).ToOmniSharp()); break;

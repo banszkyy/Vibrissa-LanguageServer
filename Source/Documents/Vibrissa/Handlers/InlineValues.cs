@@ -16,26 +16,14 @@ sealed partial class DocumentVibrissa
 
         Logger.Debug($"Inline values at {stopped}");
 
-        foreach (var v in AST.Functions
-            .As<FunctionThingDefinition>()
-            .Append(AST.Operators)
-            .Append(AST.Structs.SelectMany(v => v.Functions))
-            .Append(AST.Structs.SelectMany(v => v.Operators))
-            .Append(AST.Structs.SelectMany(v => v.Constructors))
-            .Append(AST.Structs.SelectMany(v => v.GeneralFunctions)))
+        foreach (var v in AST.AllFunctions)
         {
             if (v.Location.File != request.TextDocument.Uri) continue;
             if (!RangeUtils.Overlaps(stopped, v.Location.Position.Range)) continue;
             range = RangeUtils.Intersect(range, v.Location.Position.Range);
         }
 
-        foreach (var v in AST.Functions
-            .As<FunctionThingDefinition>()
-            .Append(AST.Operators)
-            .Append(AST.Structs.SelectMany(v => v.Functions))
-            .Append(AST.Structs.SelectMany(v => v.Operators))
-            .Append(AST.Structs.SelectMany(v => v.Constructors))
-            .Append(AST.Structs.SelectMany(v => v.GeneralFunctions)))
+        foreach (var v in AST.AllFunctions)
         {
             if (v.Location.File != request.TextDocument.Uri) continue;
             if (!RangeUtils.Overlaps(range, v.Location.Position.Range)) continue;

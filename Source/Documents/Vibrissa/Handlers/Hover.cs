@@ -58,34 +58,6 @@ sealed partial class DocumentVibrissa
         builder.Append(')');
         return builder.ToString();
     }
-    static string GetFunctionHover(CompiledConstructorDefinition function, ImmutableDictionary<string, GeneralType>? typeArguments)
-    {
-        StringBuilder builder = new();
-
-        IEnumerable<Token> modifiers = Utils.GetVisibleModifiers(function.Definition.Modifiers);
-        if (modifiers.Any())
-        {
-            builder.AppendJoin(' ', modifiers);
-            builder.Append(' ');
-        }
-
-        builder.Append(GeneralType.TryInsertTypeParameters(function.Type, typeArguments) ?? function.Type);
-        builder.Append('(');
-        for (int i = 0; i < function.Definition.Parameters.Length; i++)
-        {
-            if (i > 0) builder.Append(", ");
-            builder.AppendJoin(' ', function.Definition.Parameters[i].Modifiers);
-            if (function.Definition.Parameters[i].Modifiers.Length > 0)
-            { builder.Append(' '); }
-
-            builder.Append(GeneralType.TryInsertTypeParameters(function.Parameters[i].Type, typeArguments).ToString());
-
-            builder.Append(' ');
-            builder.Append(function.Parameters[i].Identifier);
-        }
-        builder.Append(')');
-        return builder.ToString();
-    }
     static string GetStructHover(CompiledStruct @struct) => $"{string.Join(null, Utils.GetVisibleModifiers(@struct.Definition.Modifiers).Select(v => $"{v} "))}{DeclarationKeywords.Struct} {@struct.Identifier}";
     static string GetStructHover(StructDefinition @struct) => $"{string.Join(null, Utils.GetVisibleModifiers(@struct.Modifiers).Select(v => $"{v} "))}{DeclarationKeywords.Struct} {@struct.Identifier}";
     static string GetAliasHover(CompiledAlias alias) => $"{string.Join(null, Utils.GetVisibleModifiers(alias.Definition.Modifiers).Select(v => $"{v} "))}{DeclarationKeywords.Alias} {alias.Identifier} = {alias.Value}";
@@ -108,7 +80,6 @@ sealed partial class DocumentVibrissa
             case CompiledOperatorDefinition v: return GetFunctionHover(v, null);
             case CompiledFunctionDefinition v: return GetFunctionHover(v, null);
             case CompiledGeneralFunctionDefinition v: return GetFunctionHover(v, null);
-            case CompiledConstructorDefinition v: return GetFunctionHover(v, null);
             case CompiledVariableConstant v: return GetConstantHover(v);
             case CompiledVariableDefinition v: return GetVariableHover(v);
             case CompiledParameter v: return GetParameterHover(v);
@@ -143,7 +114,7 @@ sealed partial class DocumentVibrissa
         {
             foreach (IHaveAttributes function1 in
                 AST.Functions.Append(AST.Operators)
-                .Append(AST.Structs.SelectMany(v => v.Functions.CastArray<IHaveAttributes>().Append(v.GeneralFunctions).Append(v.Operators).Append(v.Constructors)))
+                .Append(AST.Structs.SelectMany(v => v.Functions.CastArray<IHaveAttributes>().Append(v.GeneralFunctions).Append(v.Operators)))
                 .Append(AST.Structs)
                 .Append(AST.AliasDefinitions)
                 .Append(AST.EnumDefinitions))

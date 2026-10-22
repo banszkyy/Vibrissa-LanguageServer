@@ -74,19 +74,11 @@ sealed partial class DocumentVibrissa
             {
                 children.Add(new DocumentSymbol()
                 {
-                    Kind = SymbolKind.Function,
-                    Name = function.Identifier.Content,
-                    Range = function.Position.Range.ToOmniSharp(),
-                    SelectionRange = function.Identifier.Position.Range.ToOmniSharp(),
-                    Detail = function.ToReadable(),
-                });
-            }
-
-            foreach (ConstructorDefinition function in @struct.Constructors)
-            {
-                children.Add(new DocumentSymbol()
-                {
-                    Kind = SymbolKind.Constructor,
+                    Kind = function.Identifier.Content switch
+                    {
+                        BuiltinFunctionIdentifiers.Initializer => SymbolKind.Constructor,
+                        _ => SymbolKind.Method,
+                    },
                     Name = function.Identifier.Content,
                     Range = function.Position.Range.ToOmniSharp(),
                     SelectionRange = function.Identifier.Position.Range.ToOmniSharp(),

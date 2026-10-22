@@ -68,9 +68,6 @@ static class Utils
         if (GetParameterDefinitionAt(compilerResult.GeneralFunctionDefinitions, file, position, out parameter, out parameterType))
         { return true; }
 
-        if (GetParameterDefinitionAt(compilerResult.ConstructorDefinitions, file, position, out parameter, out parameterType))
-        { return true; }
-
         return false;
     }
 

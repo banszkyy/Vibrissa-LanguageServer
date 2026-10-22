@@ -52,20 +52,6 @@ sealed partial class DocumentVibrissa
             });
         }
 
-        foreach (CompiledConstructorDefinition function in CompilerResult.ConstructorDefinitions)
-        {
-            if (function.File != Uri) continue;
-
-            result.Add(new CodeLens()
-            {
-                Range = function.Definition.Type.Position.Range.ToOmniSharp(),
-                Command = new Command()
-                {
-                    Title = $"{function.References.DistinctBy(v => v.Source).Count(v => !v.SourceLocation.IsDefault)} reference",
-                },
-            });
-        }
-
         foreach (CompiledStruct @struct in CompilerResult.Structs)
         {
             if (@struct.Definition.File != Uri) continue;

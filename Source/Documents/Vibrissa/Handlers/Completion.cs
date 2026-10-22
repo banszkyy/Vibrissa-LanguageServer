@@ -477,7 +477,6 @@ sealed partial class DocumentVibrissa
             foreach (var f in
                 s.Functions
                 .Cast<FunctionThingDefinition>()
-                .Append(s.Constructors)
                 .Append(s.GeneralFunctions)
                 .Append(s.Operators))
             {
