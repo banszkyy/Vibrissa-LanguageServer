@@ -1,4 +1,5 @@
 using LanguageCore;
+using LanguageCore.Compiler;
 using LanguageCore.Parser;
 using LanguageCore.Parser.Statements;
 
@@ -8,7 +9,7 @@ sealed partial class DocumentVibrissa
 {
     public override async Task<IEnumerable<InlineValueBase>?> InlineValues(InlineValueParams request, CancellationToken cancellationToken)
     {
-        await AwaitForCompilation(Version, cancellationToken).ConfigureAwait(false);
+        await AwaitForCompilation(Version, RecompileLevel.Light, cancellationToken).ConfigureAwait(false);
 
         Range<SinglePosition> range = request.Range.ToCool();
         Range<SinglePosition> stopped = request.Context.StoppedLocation.ToCool();
@@ -38,11 +39,8 @@ sealed partial class DocumentVibrissa
             }
         }
 
-        foreach (var v in AST.EnumerateStatements())
+        foreach (var v in StatementWalker.EnumerateNodes(AST, StatementWalkerFilter.At(range)))
         {
-            if (v.Location.File != request.TextDocument.Uri) continue;
-            if (!RangeUtils.Overlaps(range, v.Location.Position.Range)) continue;
-
             if (v is VariableDefinition variableDefinition)
             {
                 result.Add(new InlineValueVariableLookup()
@@ -53,7 +51,7 @@ sealed partial class DocumentVibrissa
                 });
             }
             else if (v is AnyCallExpression anyCallExpression
-                && RangeUtils.Overlaps(stopped, v.Location.Position.Range)
+                && RangeUtils.Overlaps(stopped, anyCallExpression.Position.Range)
                 && anyCallExpression.ToFunctionCall(out FunctionCallExpression? functionCallExpression))
             {
                 result.Add(new InlineValueVariableLookup()

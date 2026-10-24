@@ -183,12 +183,6 @@ sealed partial class DocumentVibrissa
 
     static TypeInstance GetDeepestTypeInstance(TypeInstance type, SinglePosition position)
     {
-        GetDeepestTypeInstance(ref type, position);
-        return type;
-    }
-
-    static void GetDeepestTypeInstance(ref TypeInstance type, SinglePosition position)
-    {
         switch (type)
         {
             case TypeInstanceSimple simpleType:
@@ -200,9 +194,7 @@ sealed partial class DocumentVibrissa
                             TypeInstance? item = simpleType.TypeArguments.Value[i];
                             if (item.Position.Range.Contains(position))
                             {
-                                type = item;
-                                GetDeepestTypeInstance(ref type, position);
-                                return;
+                                return GetDeepestTypeInstance(item, position);
                             }
                         }
                     }
@@ -213,9 +205,7 @@ sealed partial class DocumentVibrissa
                 {
                     if (pointerType.To.Position.Range.Contains(position))
                     {
-                        type = pointerType.To;
-                        GetDeepestTypeInstance(ref type, position);
-                        return;
+                        return GetDeepestTypeInstance(pointerType.To, position);
                     }
 
                     break;
@@ -224,9 +214,7 @@ sealed partial class DocumentVibrissa
                 {
                     if (referenceType.To.Position.Range.Contains(position))
                     {
-                        type = referenceType.To;
-                        GetDeepestTypeInstance(ref type, position);
-                        return;
+                        return GetDeepestTypeInstance(referenceType.To, position);
                     }
 
                     break;
@@ -235,9 +223,7 @@ sealed partial class DocumentVibrissa
                 {
                     if (arrayType.StackArrayOf.Position.Range.Contains(position))
                     {
-                        type = arrayType.StackArrayOf;
-                        GetDeepestTypeInstance(ref type, position);
-                        return;
+                        return GetDeepestTypeInstance(arrayType.StackArrayOf, position);
                     }
 
                     break;
@@ -246,18 +232,14 @@ sealed partial class DocumentVibrissa
                 {
                     if (functionType.FunctionReturnType.Position.Range.Contains(position))
                     {
-                        type = functionType.FunctionReturnType;
-                        GetDeepestTypeInstance(ref type, position);
-                        return;
+                        return GetDeepestTypeInstance(functionType.FunctionReturnType, position);
                     }
 
                     for (int i = 0; i < functionType.FunctionParameterTypes.Length; i++)
                     {
                         if (functionType.FunctionParameterTypes[i].Position.Range.Contains(position))
                         {
-                            type = functionType.FunctionParameterTypes[i];
-                            GetDeepestTypeInstance(ref type, position);
-                            return;
+                            return GetDeepestTypeInstance(functionType.FunctionParameterTypes[i], position);
                         }
                     }
 
@@ -266,10 +248,14 @@ sealed partial class DocumentVibrissa
             default:
                 break;
         }
+
+        return type;
     }
 
     bool GetTypeInstanceAt(SinglePosition position, bool includeStatements, [NotNullWhen(true)] out TypeInstance? result)
     {
+        result = null;
+
         foreach (TypeInstance type in
             // Functions
             AST.Functions
@@ -313,20 +299,20 @@ sealed partial class DocumentVibrissa
         {
             if (AST.GetStatementAt(position, out Statement? statement))
             {
-                foreach (Statement item in StatementWalker.Visit(statement))
+                foreach (ISmallNode item in StatementWalker.EnumerateNodes(statement, StatementWalkerFilter.At(position)))
                 {
-                    if (!item.Position.Range.Contains(position)) continue;
-                    if (item is not IHaveType haveType) break;
+                    Logger.Debug($"Statement on cursor: {item.GetType().Name} {item}");
+                    if (item is not TypeInstance type) continue;
+                    result = type;
+                }
 
-                    result = GetDeepestTypeInstance(haveType.Type, position);
-                    if (!result.Position.Range.Contains(position)) break;
-
+                if (result is not null && result.Position.Range.Contains(position))
+                {
                     return true;
                 }
             }
         }
 
-        result = null;
         return false;
     }
 }

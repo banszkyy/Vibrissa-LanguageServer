@@ -12,17 +12,17 @@ sealed partial class DocumentVibrissa
 {
     public override async Task<SignatureHelp?> SignatureHelp(SignatureHelpParams e, CancellationToken cancellationToken)
     {
-        await AwaitForCompilation(Version, cancellationToken).ConfigureAwait(false);
+        await AwaitForCompilation(Version, RecompileLevel.Light, cancellationToken).ConfigureAwait(false);
 
-        SinglePosition position = e.Position.ToCool();
+        SinglePosition p = e.Position.ToCool();
 
         AnyCallExpression? call = null;
 
-        foreach (Statement item in CompilerResult.StatementsIn(e.TextDocument.Uri.ToUri()).SelectMany(StatementWalker.Visit))
+        foreach (ISmallNode item in StatementWalker.EnumerateNodes(AST, StatementWalkerFilter.At(p)))
         {
             if (item is AnyCallExpression anyCall)
             {
-                if (!new Position(anyCall.Arguments.Brackets).Range.Contains(position)) continue;
+                if (!new Position(anyCall.Arguments.Brackets).Range.Contains(p)) continue;
                 call = anyCall;
                 Logger.Info($"Call found");
             }
@@ -32,9 +32,10 @@ sealed partial class DocumentVibrissa
                     && functionType.FunctionReturnType is TypeInstanceSimple typeInstanceSimple
                     && !typeInstanceSimple.TypeArguments.HasValue)
                 {
-                    if (!new Position(functionType.Brackets).Range.Contains(position)) continue;
+                    if (!new Position(functionType.Brackets).Range.Contains(p)) continue;
                     call = new AnyCallExpression(
                         new IdentifierExpression(typeInstanceSimple.Identifier, typeInstanceSimple.File),
+                        null,
                         ArgumentListExpression.CreateAnonymous(functionType.Brackets, functionType.File),
                         functionType.File
                     );
@@ -58,7 +59,7 @@ sealed partial class DocumentVibrissa
         int activeArgument = 0;
         for (int i = 0; i < call.Arguments.Commas.Length; i++)
         {
-            if (position >= call.Arguments.Commas[i].Position.Range.End)
+            if (p >= call.Arguments.Commas[i].Position.Range.End)
             {
                 activeArgument = i + 1;
             }

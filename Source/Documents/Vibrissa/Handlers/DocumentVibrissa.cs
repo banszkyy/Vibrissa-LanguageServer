@@ -10,7 +10,7 @@ sealed partial class DocumentVibrissa
 {
     public override async Task<IEnumerable<CommandOrCodeAction>?> CodeAction(CodeActionParams request, CancellationToken cancellationToken)
     {
-        await AwaitForCompilation(Version, cancellationToken).ConfigureAwait(false);
+        await AwaitForCompilation(Version, RecompileLevel.Light, cancellationToken).ConfigureAwait(false);
 
         List<CommandOrCodeAction> result = new();
 
@@ -80,21 +80,21 @@ sealed partial class DocumentVibrissa
         }
 
         HashSet<CompiledStatement> visitedStatements = new();
-        CompilerResult.EnumerateStatements(statement =>
+        foreach (var v in StatementWalker.EnumerateNodes(CompilerResult, StatementWalkerFilter.All))
         {
-            if (statement.Location.File != Uri) return true;
-            if (!statement.Location.Position.Range.Contains(range.Start)) return true;
-            if (statement is not CompiledFunctionCall compiledFunctionCall) return true;
+            if (v.Location.File != Uri) continue;
+            if (!v.Location.Position.Range.Contains(range.Start)) continue;
+            if (v is not CompiledFunctionCall compiledFunctionCall) continue;
 
             CompiledFunction? f = CompilerResult.Functions.FirstOrDefault(v => LanguageCore.Utils.ReferenceEquals(v.Function, compiledFunctionCall.Function.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, compiledFunctionCall.Function.TypeArguments));
 
-            if (f is null) return false;
+            if (f is null) break;
 
             Logger.Trace($"compiledFunctionCall: {compiledFunctionCall}");
             Logger.Trace($"f: {f}");
 
-            if (f.Function.Parameters.Length != compiledFunctionCall.Arguments.Length) return true;
-            if (!visitedStatements.Add(statement)) return true;
+            if (f.Function.Parameters.Length != compiledFunctionCall.Arguments.Length) continue;
+            if (!visitedStatements.Add(v)) continue;
 
             StatementCompiler.InlineContext inlineContext = new()
             {
@@ -137,8 +137,7 @@ sealed partial class DocumentVibrissa
             {
                 Logger.Trace($"Failed to inline {f.ToReadable()}: {inlineError}");
             }
-            return true;
-        });
+        }
 
         return result;
     }

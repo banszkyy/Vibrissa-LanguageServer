@@ -6,7 +6,7 @@ sealed partial class DocumentVibrissa
 {
     public override async Task GetSemanticTokens(SemanticTokensBuilder builder, ITextDocumentIdentifierParams e, CancellationToken cancellationToken)
     {
-        await AwaitForCompilation(Version, cancellationToken).ConfigureAwait(false);
+        await AwaitForCompilation(Version, RecompileLevel.Light, cancellationToken).ConfigureAwait(false);
 
         foreach (Token token in Tokens)
         {
@@ -40,20 +40,16 @@ sealed partial class DocumentVibrissa
                     builder.Push(token.Position.Range.ToOmniSharp(), SemanticTokenType.TypeParameter, Array.Empty<SemanticTokenModifier>());
                     break;
                 case TokenAnalyzedType.Keyword:
-                    //builder.Push(token.Position.Range.ToOmniSharp(), new SemanticTokenType("keyword"), new SemanticTokenModifier("meow"));
+                    //builder.Push(token.Position.Range.ToOmniSharp(), SemanticTokenType.Keyword, new SemanticTokenModifier("meow"));
                     break;
                 case TokenAnalyzedType.FieldName:
                     builder.Push(token.Position.Range.ToOmniSharp(), SemanticTokenType.Property, Array.Empty<SemanticTokenModifier>());
                     break;
-                case TokenAnalyzedType.CompileTag:
-                    break;
-                case TokenAnalyzedType.CompileTagParameter:
-                    break;
                 case TokenAnalyzedType.Statement:
-                    builder.Push(token.Position.Range.ToOmniSharp(), new SemanticTokenType("keyword"), new SemanticTokenModifier("meow"));
+                    builder.Push(token.Position.Range.ToOmniSharp(), SemanticTokenType.Keyword, new SemanticTokenModifier("meow"));
                     break;
                 case TokenAnalyzedType.BuiltinType:
-                    builder.Push(token.Position.Range.ToOmniSharp(), new SemanticTokenType("keyword"), new SemanticTokenModifier("meow"));
+                    builder.Push(token.Position.Range.ToOmniSharp(), SemanticTokenType.Keyword, new SemanticTokenModifier("meow"));
                     break;
                 case TokenAnalyzedType.MathOperator:
                     builder.Push(token.Position.Range.ToOmniSharp(), SemanticTokenType.Operator, Array.Empty<SemanticTokenModifier>());

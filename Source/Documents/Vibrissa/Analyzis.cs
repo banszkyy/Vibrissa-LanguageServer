@@ -78,8 +78,8 @@ partial class DocumentVibrissa
         return true;
     }
 
-    Task<bool> AwaitForCompilation(DocumentVersion? version, CancellationToken cancellationToken, RecompileLevel level = RecompileLevel.Forced) => AwaitForCompilation(version ?? DocumentVersion.Zero(0), cancellationToken, level);
-    Task<bool> AwaitForCompilation(DocumentVersion version, CancellationToken cancellationToken, RecompileLevel level = RecompileLevel.Forced)
+    Task<bool> AwaitForCompilation(DocumentVersion? version, RecompileLevel level, CancellationToken cancellationToken) => AwaitForCompilation(version ?? DocumentVersion.Zero(0), level, cancellationToken);
+    Task<bool> AwaitForCompilation(DocumentVersion version, RecompileLevel level, CancellationToken cancellationToken)
     {
         if (level == RecompileLevel.None)
         {
@@ -271,7 +271,7 @@ partial class DocumentVibrissa
             CompilerResult = compilerResult;
 
             compiledFiles = new(compilerResult.RawTokens.Select(v => v.File));
-            Logger.Info($"Validated {CurrentlyCompilingVersion} ({(diagnostics.HasErrors ? "failed" : "ok")})");
+            Logger.Info($"Validated {CurrentlyCompilingVersion}");
 
             foreach (Diagnostic item in diagnostics.DiagnosticsWithoutContext)
             {

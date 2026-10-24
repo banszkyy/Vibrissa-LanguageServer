@@ -79,8 +79,6 @@ abstract class DocumentBase
     public virtual Task GetSemanticTokens(SemanticTokensBuilder builder, ITextDocumentIdentifierParams request, CancellationToken cancellationToken) => Task.CompletedTask;
     public virtual Task<IEnumerable<CompletionItem>?> Completion(CompletionParams request, CancellationToken cancellationToken) => Task.FromResult<IEnumerable<CompletionItem>?>(null);
     public virtual Task<LocationOrLocationLinks?> GotoDefinition(DefinitionParams request, CancellationToken cancellationToken) => Task.FromResult<LocationOrLocationLinks?>(null);
-    public virtual Task<LocationOrLocationLinks?> GotoDeclaration(DeclarationParams request, CancellationToken cancellationToken) => Task.FromResult<LocationOrLocationLinks?>(null);
-    public virtual Task<LocationOrLocationLinks?> GotoTypeDefinition(TypeDefinitionParams request, CancellationToken cancellationToken) => Task.FromResult<LocationOrLocationLinks?>(null);
     public virtual Task<LocationOrLocationLinks?> GotoImplementation(ImplementationParams request, CancellationToken cancellationToken) => Task.FromResult<LocationOrLocationLinks?>(null);
     public virtual Task<IEnumerable<SymbolInformationOrDocumentSymbol>?> Symbols(DocumentSymbolParams request, CancellationToken cancellationToken) => Task.FromResult<IEnumerable<SymbolInformationOrDocumentSymbol>?>(null);
     public virtual Task<IEnumerable<InlineValueBase>?> InlineValues(InlineValueParams request, CancellationToken cancellationToken) => Task.FromResult<IEnumerable<InlineValueBase>?>(null);

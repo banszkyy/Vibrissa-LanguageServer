@@ -58,7 +58,7 @@ sealed partial class DocumentVibrissa
 
     public override async Task<LocationOrLocationLinks?> GotoDefinition(DefinitionParams e, CancellationToken cancellationToken)
     {
-        await AwaitForCompilation(Version, cancellationToken).ConfigureAwait(false);
+        await AwaitForCompilation(Version, RecompileLevel.Light, cancellationToken).ConfigureAwait(false);
 
         SinglePosition p = e.Position.ToCool();
 
@@ -70,7 +70,7 @@ sealed partial class DocumentVibrissa
             if (!pathPos.Range.Contains(p)) continue;
             if (@using.CompiledUri is null) break;
 
-            return new LocationOrLocationLinks(new LocationLink()
+            return new(new LocationLink()
             {
                 TargetUri = DocumentUri.From(@using.CompiledUri),
                 OriginSelectionRange = pathPos.ToOmniSharp(),
@@ -79,30 +79,70 @@ sealed partial class DocumentVibrissa
             });
         }
 
-        List<LocationOrLocationLink> links = new();
+        if (GetTypeInstanceAt(e.Position.ToCool(), true, out TypeInstance? origin))
+        {
+            origin = GetDeepestTypeInstance(origin, e.Position.ToCool());
+
+            if (origin is not null && origin is TypeInstanceSimple w && w.CompiledTypeExpression is not null)
+            {
+                Position position = w.Identifier.Position;
+
+                if (w.CompiledTypeExpression is CompiledStructTypeExpression structType && GetGotoDefinition(structType.Struct, out LocationLink? link0))
+                {
+                    return new(new LocationLink()
+                    {
+                        OriginSelectionRange = position.ToOmniSharp(),
+                        TargetRange = link0.TargetRange,
+                        TargetSelectionRange = link0.TargetSelectionRange,
+                        TargetUri = link0.TargetUri,
+                    });
+                }
+
+                if (w.CompiledTypeExpression is CompiledGenericTypeExpression genericType && genericType.Definition is not null)
+                {
+                    return new(new LocationLink()
+                    {
+                        OriginSelectionRange = position.ToOmniSharp(),
+                        TargetRange = genericType.Definition.Position.Range.ToOmniSharp(),
+                        TargetSelectionRange = genericType.Definition.Position.Range.ToOmniSharp(),
+                        TargetUri = DocumentUri,
+                    });
+                }
+
+                if (w.CompiledTypeExpression is CompiledAliasTypeExpression aliasType && aliasType.Definition is not null)
+                {
+                    return new(new LocationLink()
+                    {
+                        OriginSelectionRange = position.ToOmniSharp(),
+                        TargetRange = aliasType.Definition.Definition.Position.Range.ToOmniSharp(),
+                        TargetSelectionRange = aliasType.Definition.Definition.Position.Range.ToOmniSharp(),
+                        TargetUri = aliasType.Definition.Definition.File,
+                    });
+                }
+
+                if (w.CompiledTypeExpression is CompiledEnumTypeExpression enumType && enumType.Definition is not null)
+                {
+                    return new(new LocationLink()
+                    {
+                        OriginSelectionRange = position.ToOmniSharp(),
+                        TargetRange = enumType.Definition.Definition.Position.Range.ToOmniSharp(),
+                        TargetSelectionRange = enumType.Definition.Definition.Position.Range.ToOmniSharp(),
+                        TargetUri = enumType.Definition.Definition.File,
+                    });
+                }
+            }
+        }
 
         Range<SinglePosition> range = default;
         object? reference = null;
 
-        {
-            if (GetTypeInstanceAt(p, false, out var type)
-                && type is TypeInstanceSimple typeInstanceSimple)
-            {
-                range = typeInstanceSimple.Identifier.Position.Range;
-                reference = typeInstanceSimple.Reference;
-                goto _;
-            }
-        }
-
         if (AST.GetStatementAt(p, out Statement? statement))
         {
-            foreach (Statement item in StatementWalker.Visit(statement))
+            foreach (ISmallNode item in StatementWalker.EnumerateNodes(statement, StatementWalkerFilter.At(p)))
             {
-                if (!item.Position.Range.Contains(p)) continue;
-
                 if (item is IReferenceableTo _ref1)
                 {
-                    range = Utils.GetInteractivePosition(item).Range;
+                    range = StatementExtensions.GetInteractivePosition(item).Range;
                     if (!range.Contains(p)) continue;
 
                     reference = _ref1.Reference;
@@ -125,7 +165,7 @@ sealed partial class DocumentVibrissa
 
         if (GetGotoDefinition(reference, out LocationLink? link))
         {
-            links.Add(new LocationLink()
+            return new(new LocationLink()
             {
                 OriginSelectionRange = range.ToOmniSharp(),
                 TargetRange = link.TargetRange,
@@ -134,6 +174,6 @@ sealed partial class DocumentVibrissa
             });
         }
 
-        return new LocationOrLocationLinks(links);
+        return new();
     }
 }

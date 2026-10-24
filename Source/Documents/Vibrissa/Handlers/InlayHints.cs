@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using LanguageCore;
 using LanguageCore.Compiler;
 using LanguageCore.Parser;
@@ -11,7 +12,7 @@ sealed partial class DocumentVibrissa
 {
     public override async Task<IEnumerable<InlayHint>?> InlayHints(InlayHintParams request, CancellationToken cancellationToken)
     {
-        await AwaitForCompilation(Version, cancellationToken).ConfigureAwait(false);
+        await AwaitForCompilation(Version, RecompileLevel.Light, cancellationToken).ConfigureAwait(false);
 
         MutableRange<SinglePosition> range = request.Range.ToCool();
         List<InlayHint> result = new();
@@ -47,49 +48,45 @@ sealed partial class DocumentVibrissa
 
         if (arrayLengthHints)
         {
-            foreach (TypeInstance item in AST.EnumerateTypeInstances())
+            foreach (TypeInstanceStackArray arrayType in StatementWalker.EnumerateNodes(AST, StatementWalkerFilter.At(range)).OfType<TypeInstanceStackArray>())
             {
-                if (!RangeUtils.Overlaps(range, item.Position.Range)) continue;
-
-                foreach (TypeInstance type in EnumerateNestedTypeInstances(item))
+                if (arrayType.StackArraySize is null
+                    && arrayType.CompiledType is not null
+                    && arrayType.CompiledType.Length.HasValue)
                 {
-                    if (type is TypeInstanceStackArray arrayType
-                        && arrayType.StackArraySize is null
-                        && arrayType.CompiledType is not null
-                        && arrayType.CompiledType.Length.HasValue)
+                    result.Add(new InlayHint()
                     {
-                        result.Add(new InlayHint()
+                        Kind = InlayHintKind.Parameter,
+                        Label = new StringOrInlayHintLabelParts(arrayType.CompiledType.Length.Value.ToString()),
+                        Position = arrayType.SquareBrackets.Start.Position.Range.End.ToOmniSharp(),
+                        TextEdits = new Container<TextEdit>(new TextEdit()
                         {
-                            Kind = InlayHintKind.Parameter,
-                            Label = new StringOrInlayHintLabelParts(arrayType.CompiledType.Length.Value.ToString()),
-                            Position = arrayType.SquareBrackets.Start.Position.Range.End.ToOmniSharp(),
-                            TextEdits = new Container<TextEdit>(new TextEdit()
-                            {
-                                NewText = arrayType.CompiledType.Length.Value.ToString(),
-                                Range = new Range<SinglePosition>(arrayType.SquareBrackets.Start.Position.Range.End, arrayType.SquareBrackets.Start.Position.Range.End).ToOmniSharp(),
-                            })
-                        });
-                    }
+                            NewText = arrayType.CompiledType.Length.Value.ToString(),
+                            Range = new Range<SinglePosition>(arrayType.SquareBrackets.Start.Position.Range.End, arrayType.SquareBrackets.Start.Position.Range.End).ToOmniSharp(),
+                        })
+                    });
                 }
             }
         }
 
-        foreach (Statement item in AST.EnumerateStatements())
+        foreach (ISmallNode item in StatementWalker.EnumerateNodes(AST, StatementWalkerFilter.At(range)))
         {
-            if (!RangeUtils.Overlaps(range, item.Position.Range)) continue;
-
             switch (item)
             {
                 case AnyCallExpression v:
                     {
                         if (v.Reference is null) continue;
-                        if (templateHints && v.Reference.TypeArguments is not null && v.Reference.Function.Definition.Template is not null)
+                        if (templateHints && v.TypeArguments is null && v.Reference.TypeArguments is not null && v.Reference.Function.Definition.Template is not null)
                         {
+                            StringBuilder? newText = new();
                             List<InlayHintLabelPart> parts = [];
+                            newText.Append('<');
                             foreach (Token i in v.Reference.Function.Definition.Template.Parameters)
                             {
                                 if (parts.Count > 0) parts.Add(new InlayHintLabelPart() { Value = ", " });
                                 GeneralType? w = v.Reference.TypeArguments.TryGetValue(i.Content, out GeneralType? w2) ? w2 : null;
+                                if (w is null) newText = null;
+                                else newText?.Append(w.ToString());
                                 parts.Add(new()
                                 {
                                     Value = w is null ? "?" : w.ToString(),
@@ -102,6 +99,7 @@ sealed partial class DocumentVibrissa
                                     },
                                 });
                             }
+                            newText?.Append('>');
                             parts.Insert(0, new() { Value = "<" });
                             parts.Add(new() { Value = ">" });
                             result.Add(new()
@@ -109,6 +107,11 @@ sealed partial class DocumentVibrissa
                                 Kind = InlayHintKind.Type,
                                 Label = new StringOrInlayHintLabelParts(parts),
                                 Position = v.Expression.Position.Range.End.ToOmniSharp(),
+                                TextEdits = new Container<TextEdit>(new TextEdit()
+                                {
+                                    NewText = newText?.ToString()!,
+                                    Range = newText is null ? null! : new Range<SinglePosition>(v.Expression.Position.Range.End, v.Expression.Position.Range.End).ToOmniSharp(),
+                                })
                             });
                         }
 
@@ -122,8 +125,7 @@ sealed partial class DocumentVibrissa
                                 result.Add(new()
                                 {
                                     Kind = InlayHintKind.Parameter,
-                                    Label = new StringOrInlayHintLabelParts([
-                                        new() { Value = b.Identifier.Content, Location = new LanguageCore.Location(b.Identifier.Position, b.File).ToOmniSharp() },
+                                    Label = new StringOrInlayHintLabelParts([new() { Value = b.Identifier.Content, Location = new LanguageCore.Location(b.Identifier.Position, b.File).ToOmniSharp() },
                                     new() { Value = ":" },
                                 ]),
                                     Position = a.Position.Range.Start.ToOmniSharp(),

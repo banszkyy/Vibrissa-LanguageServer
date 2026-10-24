@@ -3,13 +3,127 @@ using LanguageCore;
 using LanguageCore.Compiler;
 using LanguageCore.Parser;
 using LanguageCore.Parser.Statements;
+using LanguageCore.Tokenizing;
 
 namespace LanguageServer;
 
 static class StatementExtensions
 {
+    static bool GetParameterDefinitionAt<TFunction>(
+        TFunction function,
+        SinglePosition position,
+        [NotNullWhen(true)] out ParameterDefinition? parameter,
+        [NotNullWhen(true)] out GeneralType? parameterType)
+        where TFunction : ICompiledFunctionDefinition
+    {
+        for (int i = 0; i < function.Parameters.Length; i++)
+        {
+            parameter = function.Parameters[i].Definition;
+            parameterType = function.Parameters[i].Type;
+
+            if (parameter.Position.Range.Contains(position))
+            { return true; }
+        }
+
+        parameter = null;
+        parameterType = null;
+        return false;
+    }
+
+    static bool GetParameterDefinitionAt<TFunction>(
+        IEnumerable<TFunction> functions,
+        Uri file,
+        SinglePosition position,
+        [NotNullWhen(true)] out ParameterDefinition? parameter,
+        [NotNullWhen(true)] out GeneralType? parameterType)
+        where TFunction : ICompiledFunctionDefinition, IInFile
+    {
+        foreach (TFunction function in functions)
+        {
+            if (function.File != file) continue;
+
+            if (GetParameterDefinitionAt(function, position, out parameter, out parameterType))
+            { return true; }
+        }
+
+        parameter = null;
+        parameterType = null;
+        return false;
+    }
+
+    public static bool GetParameterDefinitionAt(
+        this CompilerResult compilerResult,
+        Uri file,
+        SinglePosition position,
+        [NotNullWhen(true)] out ParameterDefinition? parameter,
+        [NotNullWhen(true)] out GeneralType? parameterType)
+    {
+        if (GetParameterDefinitionAt(compilerResult.FunctionDefinitions, file, position, out parameter, out parameterType))
+        { return true; }
+
+        if (GetParameterDefinitionAt(compilerResult.OperatorDefinitions, file, position, out parameter, out parameterType))
+        { return true; }
+
+        if (GetParameterDefinitionAt(compilerResult.GeneralFunctionDefinitions, file, position, out parameter, out parameterType))
+        { return true; }
+
+        return false;
+    }
+
+    public static bool GetTypeInstanceAt(
+        this ParserResult ast,
+        SinglePosition position,
+        [NotNullWhen(true)] out TypeInstance? typeInstance,
+        [NotNullWhen(true)] out GeneralType? generalType)
+    {
+        foreach (var item in StatementWalker.EnumerateNodes(ast, StatementWalkerFilter.At(position)).OfType<TypeInstance>())
+        {
+            GeneralType? compiled = item switch
+            {
+                TypeInstanceFunction v => v.CompiledType,
+                TypeInstancePointer v => v.CompiledType,
+                TypeInstanceReference v => v.CompiledType,
+                TypeInstanceSimple v => v.CompiledType,
+                TypeInstanceStackArray v => v.CompiledType,
+                _ => null,
+            };
+            if (compiled is null) continue;
+
+            typeInstance = item;
+            generalType = compiled;
+            return true;
+        }
+
+        typeInstance = null;
+        generalType = null;
+        return false;
+    }
+
+    public static IEnumerable<Token> GetVisibleModifiers(IEnumerable<Token> modifiers)
+    {
+        return modifiers.Where(v => v.Content != "export");
+    }
+
+    public static LanguageCore.Position GetInteractivePosition(ISmallNode statement) => statement switch
+    {
+        AnyCallExpression v => v.Expression switch
+        {
+            FieldExpression v2 => v2.Identifier.Position,
+            _ => v.Expression.Position,
+        },
+        BinaryOperatorCallExpression v => v.Operator.Position,
+        UnaryOperatorCallExpression v => v.Operator.Position,
+        VariableDefinition v => v.Identifier.Position,
+        FieldExpression v => v.Identifier.Position,
+        ConstructorCallExpression v => v.Type.Position,
+        NewInstanceExpression v => v.Type.Position,
+        ManagedTypeCastExpression v => v.Type.Position,
+        TypeInstanceSimple v => v.Identifier.Position,
+        _ => statement.Position,
+    };
+
     public static bool GetStatementAt(this ParserResult parserResult, SinglePosition position, [NotNullWhen(true)] out Statement? statement)
-        => (statement = parserResult.EnumerateStatements().LastOrDefault(statement => statement.Position.Range.Contains(position))) is not null;
+        => (statement = StatementWalker.EnumerateNodes(parserResult, StatementWalkerFilter.At(position)).OfType<Statement>().LastOrDefault()) is not null;
 
     public static bool GetFieldAt(this ParserResult parserResult, SinglePosition position, [NotNullWhen(true)] out FieldDefinition? result)
     {

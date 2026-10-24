@@ -1,4 +1,3 @@
-using LanguageCore;
 using LanguageCore.Compiler;
 using LanguageCore.Parser;
 using LanguageCore.Parser.Statements;
@@ -9,7 +8,7 @@ sealed partial class DocumentVibrissa
 {
     public async override Task<IEnumerable<FoldingRange>?> FoldingRange(FoldingRangeRequestParam request, CancellationToken cancellationToken)
     {
-        await AwaitForCompilation(Version, cancellationToken).ConfigureAwait(false);
+        await AwaitForCompilation(Version, RecompileLevel.Light, cancellationToken).ConfigureAwait(false);
 
         List<FoldingRange> result = new();
 
@@ -46,7 +45,7 @@ sealed partial class DocumentVibrissa
             });
         }
 
-        foreach (var v in AST.EnumerateStatements())
+        foreach (ISmallNode v in StatementWalker.EnumerateNodes(AST, StatementWalkerFilter.All))
         {
             switch (v)
             {

@@ -11,7 +11,7 @@ sealed partial class DocumentVibrissa
 {
     public override async Task<IEnumerable<CompletionItem>?> Completion(CompletionParams e, CancellationToken cancellationToken)
     {
-        await AwaitForCompilation(Version, cancellationToken).ConfigureAwait(false);
+        await AwaitForCompilation(Version, RecompileLevel.Light, cancellationToken).ConfigureAwait(false);
 
         List<CompletionItem> result = new();
 
@@ -160,7 +160,7 @@ sealed partial class DocumentVibrissa
             .Append(AST.Structs)
             .Append(AST.AllFunctions)
             .Append(AST.EnumDefinitions)
-            .Append(AST.EnumerateStatements().OfType<IHaveAttributes>())
+            .Append(StatementWalker.EnumerateNodes(AST, StatementWalkerFilter.All).OfType<IHaveAttributes>())
             .SelectMany(v => v.Attributes)
         )
         {
@@ -289,7 +289,7 @@ sealed partial class DocumentVibrissa
             return result;
         }
 
-        foreach (Statement statement in AST.EnumerateStatements())
+        foreach (ISmallNode statement in StatementWalker.EnumerateNodes(AST, StatementWalkerFilter.Before(p)))
         {
             GeneralType? objectType = null;
             Expression? objectExpression = null;

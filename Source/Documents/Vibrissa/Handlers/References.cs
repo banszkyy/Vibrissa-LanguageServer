@@ -9,7 +9,7 @@ sealed partial class DocumentVibrissa
 {
     public override async Task<IEnumerable<OmniSharpLocation>?> References(ReferenceParams e, CancellationToken cancellationToken)
     {
-        await AwaitForCompilation(Version, cancellationToken).ConfigureAwait(false);
+        await AwaitForCompilation(Version, RecompileLevel.Light, cancellationToken).ConfigureAwait(false);
 
         SinglePosition p = e.Position.ToCool();
         List<OmniSharpLocation> result = new();

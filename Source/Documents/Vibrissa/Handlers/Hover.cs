@@ -20,12 +20,21 @@ sealed partial class DocumentVibrissa
         StructType v => GetStructHover(v.Struct),
         _ => type.ToString()
     };
+    static string? GetTypeHover(CompiledTypeExpression type) => type switch
+    {
+        CompiledAliasTypeExpression v => GetAliasHover(v.Definition),
+        CompiledEnumTypeExpression v => GetEnumHover(v.Definition),
+        CompiledBuiltinTypeExpression v => $"{v}",
+        CompiledGenericTypeExpression v => $"(generic) {v.Identifier}",
+        CompiledStructTypeExpression v => GetStructHover(v.Struct),
+        _ => type.ToString()
+    };
     static string GetFunctionHover<TFunction>(TFunction function, ImmutableDictionary<string, GeneralType>? typeArguments)
         where TFunction : ICompiledFunctionDefinition, ICompiledDefinition<FunctionThingDefinition>
     {
         StringBuilder builder = new();
 
-        IEnumerable<Token> modifiers = Utils.GetVisibleModifiers(function.Definition.Modifiers);
+        IEnumerable<Token> modifiers = StatementExtensions.GetVisibleModifiers(function.Definition.Modifiers);
         if (modifiers.Any())
         {
             builder.AppendJoin(' ', modifiers);
@@ -58,11 +67,11 @@ sealed partial class DocumentVibrissa
         builder.Append(')');
         return builder.ToString();
     }
-    static string GetStructHover(CompiledStruct @struct) => $"{string.Join(null, Utils.GetVisibleModifiers(@struct.Definition.Modifiers).Select(v => $"{v} "))}{DeclarationKeywords.Struct} {@struct.Identifier}";
-    static string GetStructHover(StructDefinition @struct) => $"{string.Join(null, Utils.GetVisibleModifiers(@struct.Modifiers).Select(v => $"{v} "))}{DeclarationKeywords.Struct} {@struct.Identifier}";
-    static string GetAliasHover(CompiledAlias alias) => $"{string.Join(null, Utils.GetVisibleModifiers(alias.Definition.Modifiers).Select(v => $"{v} "))}{DeclarationKeywords.Alias} {alias.Identifier} = {alias.Value}";
-    static string GetEnumHover(CompiledEnum @enum) => $"{string.Join(null, Utils.GetVisibleModifiers(@enum.Definition.Modifiers).Select(v => $"{v} "))}{DeclarationKeywords.Enum} {@enum.Identifier} : {@enum.Type}";
-    static string GetEnumHover(EnumDefinition @enum) => $"{string.Join(null, Utils.GetVisibleModifiers(@enum.Modifiers).Select(v => $"{v} "))}{DeclarationKeywords.Enum} {@enum.Identifier}{(@enum.Type is null ? null : $" : {@enum.Type}")}";
+    static string GetStructHover(CompiledStruct @struct) => $"{string.Join(null, StatementExtensions.GetVisibleModifiers(@struct.Definition.Modifiers).Select(v => $"{v} "))}{DeclarationKeywords.Struct} {@struct.Identifier}";
+    static string GetStructHover(StructDefinition @struct) => $"{string.Join(null, StatementExtensions.GetVisibleModifiers(@struct.Modifiers).Select(v => $"{v} "))}{DeclarationKeywords.Struct} {@struct.Identifier}";
+    static string GetAliasHover(CompiledAlias alias) => $"{string.Join(null, StatementExtensions.GetVisibleModifiers(alias.Definition.Modifiers).Select(v => $"{v} "))}{DeclarationKeywords.Alias} {alias.Identifier} = {alias.Value}";
+    static string GetEnumHover(CompiledEnum @enum) => $"{string.Join(null, StatementExtensions.GetVisibleModifiers(@enum.Definition.Modifiers).Select(v => $"{v} "))}{DeclarationKeywords.Enum} {@enum.Identifier} : {@enum.Type}";
+    static string GetEnumHover(EnumDefinition @enum) => $"{string.Join(null, StatementExtensions.GetVisibleModifiers(@enum.Modifiers).Select(v => $"{v} "))}{DeclarationKeywords.Enum} {@enum.Identifier}{(@enum.Type is null ? null : $" : {@enum.Type}")}";
     static string GetEnumMemberHover(CompiledEnumMember enumMember) => $"{enumMember.Enum.Type} {enumMember.Identifier} = {enumMember.Value}";
     static string GetEnumMemberHover(EnumMemberDefinition enumMember) => $"{enumMember.Identifier} = {enumMember.Value}";
     static string GetVariableHover(CompiledVariableDefinition variable) => $"(variable) {variable.Type} {variable.Identifier}";
@@ -88,6 +97,8 @@ sealed partial class DocumentVibrissa
             case CompiledEnum v: return GetEnumHover(v);
             case CompiledEnumMember v: return GetEnumMemberHover(v);
             case StatementCompiler.FunctionQueryResult<CompiledFunctionDefinition> v: return GetFunctionHover(v.Function, v.TypeArguments);
+            case StatementCompiler.FunctionQueryResult<CompiledOperatorDefinition> v: return GetFunctionHover(v.Function, v.TypeArguments);
+            case StatementCompiler.FunctionQueryResult<CompiledGeneralFunctionDefinition> v: return GetFunctionHover(v.Function, v.TypeArguments);
             case ParameterDefinition v: return GetParameterHover(v);
             case FieldDefinition v: return GetFieldHover(v);
             case StructDefinition v: return GetStructHover(v);
@@ -219,11 +230,9 @@ sealed partial class DocumentVibrissa
         }
         else if (AST.GetStatementAt(position, out Statement? statement))
         {
-            foreach (Statement item in StatementWalker.Visit(statement))
+            foreach (ISmallNode item in StatementWalker.EnumerateNodes(statement, StatementWalkerFilter.At(e.Position.ToCool())))
             {
-                if (!item.Position.Range.Contains(e.Position.ToCool())) continue;
-
-                Position checkPosition = Utils.GetInteractivePosition(item);
+                Position checkPosition = StatementExtensions.GetInteractivePosition(item);
 
                 if (!checkPosition.Range.Contains(e.Position.ToCool())) continue;
 
@@ -353,6 +362,12 @@ sealed partial class DocumentVibrissa
                 {
                     range = typeInstanceSimple.Position.Range;
                     typeHover = GetTypeHover(typeInstanceSimple.CompiledType);
+                }
+
+                if (typeInstanceSimple.CompiledTypeExpression is not null)
+                {
+                    range = typeInstanceSimple.Position.Range;
+                    typeHover = GetTypeHover(typeInstanceSimple.CompiledTypeExpression);
                 }
             }
         }
