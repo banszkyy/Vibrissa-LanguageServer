@@ -10,12 +10,12 @@ sealed partial class DocumentVibrissa
     public override void OnSaved(DidSaveTextDocumentParams e)
     {
         base.OnSaved(e);
-        RequestCompilation(Version, CompilationReason.Saved);
+        RequestCompilation(Version);
     }
 
     public override void OnOpened(DidOpenTextDocumentParams e)
     {
         base.OnOpened(e);
-        RequestCompilation(Version, CompilationReason.Opened);
+        RequestCompilation(Version);
     }
 }

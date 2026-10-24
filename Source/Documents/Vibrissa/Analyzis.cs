@@ -12,13 +12,12 @@ using Diagnostic = LanguageCore.Diagnostic;
 
 namespace LanguageServer.DocumentManagers;
 
-enum CompilationReason
+enum RecompileLevel
 {
     None,
-    Unknown,
-    Saved,
-    Opened,
-    Requested,
+    Light,
+    Forced,
+    Full,
 }
 
 partial class DocumentVibrissa
@@ -32,21 +31,31 @@ partial class DocumentVibrissa
     public CompilerSettings CompilerSettings;
 
     Task<bool>? CompilationTask;
-    CancellationTokenSource? CompilationTaskCTS;
     DocumentVersion CompiledVersion;
     DocumentVersion CurrentlyCompilingVersion;
-    CompilationReason CompilationReason;
     DocumentVersion DesiredCompiledVersion;
     StatementCompiler? Compiler;
 
-    bool RequestCompilation(DocumentVersion? version, CompilationReason reason, bool force = false) => RequestCompilation(version ?? DocumentVersion.Zero(0), reason, force);
-    bool RequestCompilation(DocumentVersion version, CompilationReason reason, bool force = false)
+    bool RequestCompilation(DocumentVersion? version, RecompileLevel level = RecompileLevel.Light) => RequestCompilation(version ?? DocumentVersion.Zero(0), level);
+    bool RequestCompilation(DocumentVersion version, RecompileLevel level = RecompileLevel.Light)
     {
         if (CompilationTask is not null && !CompilationTask.IsCompleted) return false;
-        if (!force && CompiledVersion == version) return false;
-        if (!force && DesiredCompiledVersion == version) return false;
+        if (level < RecompileLevel.Forced && (CompiledVersion == version || DesiredCompiledVersion == version)) return false;
 
-        Logger.Debug($"Requesting compilation for {version} because of {reason}{(force ? " (forced)" : null)}");
+        {
+            List<string> _frames = [];
+            foreach (var item in new StackTrace().ToString().Split('\n'))
+            {
+                if (!item.Contains(nameof(LanguageServer)))
+                {
+                    _frames.Add("...");
+                    break;
+                }
+
+                _frames.Add(item);
+            }
+            Logger.Debug($"Requesting compilation for {version} ({level})\n{string.Join('\n', _frames)}");
+        }
 
         DesiredCompiledVersion = version;
 
@@ -54,17 +63,14 @@ partial class DocumentVibrissa
         {
             await Task.Delay(500).ConfigureAwait(false);
 
-            if (!force && CompiledVersion == DesiredCompiledVersion) return false;
+            if (level < RecompileLevel.Forced && CompiledVersion == DesiredCompiledVersion) return false;
 
-            CompilationReason = reason;
-            CompilationTaskCTS = new();
-            CompileAsync(CompilationTaskCTS.Token);
-            CompilationReason = CompilationReason.None;
-            CompilationTaskCTS = null;
+            CompileAsync(level);
 
             if (DesiredCompiledVersion != CompiledVersion)
             {
-                RequestCompilation(DesiredCompiledVersion, reason, force: false);
+                Logger.Debug($"Desired and compiled version mismatch {DesiredCompiledVersion} != {CompiledVersion}");
+                RequestCompilation(DesiredCompiledVersion, level);
             }
 
             return true;
@@ -72,21 +78,22 @@ partial class DocumentVibrissa
         return true;
     }
 
-    Task<bool> AwaitForCompilation(DocumentVersion? version, CancellationToken cancellationToken, bool force = true) => AwaitForCompilation(version ?? DocumentVersion.Zero(0), cancellationToken, force);
-    Task<bool> AwaitForCompilation(DocumentVersion version, CancellationToken cancellationToken, bool force = true)
+    Task<bool> AwaitForCompilation(DocumentVersion? version, CancellationToken cancellationToken, RecompileLevel level = RecompileLevel.Forced) => AwaitForCompilation(version ?? DocumentVersion.Zero(0), cancellationToken, level);
+    Task<bool> AwaitForCompilation(DocumentVersion version, CancellationToken cancellationToken, RecompileLevel level = RecompileLevel.Forced)
     {
-        Logger.Trace($"Validating version {version}{(force ? " (force)" : null)}");
-        if (!force && (CompilationReason is CompilationReason.Requested or CompilationReason.None))
+        if (level == RecompileLevel.None)
         {
-            Logger.Trace($"Skipping validation");
-            return Task.FromResult(false);
+            if (CompilationTask is null) return Task.FromResult(false);
+            return CompilationTask.WaitAsync(cancellationToken);
         }
-        RequestCompilation(version, CompilationReason.Requested);
+
+        Logger.Trace($"Validating version {version} ({level})");
+        RequestCompilation(version, level);
         if (CompilationTask is null) return Task.FromResult(false);
         return CompilationTask.WaitAsync(cancellationToken);
     }
 
-    void CompileAsync(CancellationToken cancellationToken)
+    void CompileAsync(RecompileLevel level, CancellationToken cancellationToken = default)
     {
         CurrentlyCompilingVersion = Version ?? DocumentVersion.Zero(0);
 
@@ -95,7 +102,6 @@ partial class DocumentVibrissa
         OmniSharpService.Instance?.Server?.SendNotification<CompilerStatusNotificationArgs>("meow/compiler/status", new()
         {
             Status = "working",
-            Details = $"{System.IO.Path.GetFileName(Uri.LocalPath)} {CurrentlyCompilingVersion}",
         });
 
         VibrissaProject? project = null;
@@ -184,6 +190,13 @@ partial class DocumentVibrissa
             else
             {
                 isPartialSource = true;
+            }
+
+            if (level == RecompileLevel.Full)
+            {
+                Logger.Debug($"  Clearing cache");
+                Cache.Clear();
+                Compiler = null;
             }
 
             List<IExternalFunction> externalFunctions = new();
@@ -384,7 +397,7 @@ partial class DocumentVibrissa
             OmniSharpService.Instance?.Server?.SendNotification<CompilerStatusNotificationArgs>("meow/compiler/status", new()
             {
                 Status = "failed",
-                Details = $"{ex.GetType().Name}: {ex.Message}",
+                Details = ex.GetType().Name,
             });
         }
         finally
