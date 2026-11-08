@@ -86,19 +86,21 @@ sealed partial class DocumentVibrissa
         {
             case TypeInstanceSimple simpleType:
                 {
-                    if (simpleType.TypeArguments.HasValue)
+                    if (simpleType.TemplateArguments.HasValue)
                     {
                         if (type2.Is(out StructType? structType) &&
                             structType.Struct.Definition.Template is not null)
                         {
-                            for (int i = 0; i < simpleType.TypeArguments.Value.Length; i++)
+                            for (int i = 0; i < simpleType.TemplateArguments.Value.Length; i++)
                             {
-                                TypeInstance? item = simpleType.TypeArguments.Value[i];
-                                GeneralType? item2 = structType.TypeArguments[structType.Struct.Definition.Template.Parameters[i].Content];
+                                TemplateArgumentExpression item = simpleType.TemplateArguments.Value[i];
+                                CompiledTemplateArgument item2 = structType.TemplateArguments[structType.Struct.Definition.Template.Parameters[i].Content];
+                                if (item is not TemplateArgumentExpressionType item0) return;
+                                if (item2 is not CompiledTemplateArgumentType item20) return;
                                 if (item.Position.Range.Contains(position))
                                 {
-                                    type1 = item;
-                                    type2 = item2;
+                                    type1 = item0.Value;
+                                    type2 = item20.Value;
                                     GetDeepestTypeInstance(ref type1, ref type2, position);
                                     return;
                                 }
@@ -187,14 +189,15 @@ sealed partial class DocumentVibrissa
         {
             case TypeInstanceSimple simpleType:
                 {
-                    if (simpleType.TypeArguments.HasValue)
+                    if (simpleType.TemplateArguments.HasValue)
                     {
-                        for (int i = 0; i < simpleType.TypeArguments.Value.Length; i++)
+                        for (int i = 0; i < simpleType.TemplateArguments.Value.Length; i++)
                         {
-                            TypeInstance? item = simpleType.TypeArguments.Value[i];
+                            TemplateArgumentExpression item = simpleType.TemplateArguments.Value[i];
+                            if (item is not TemplateArgumentExpressionType w) break;
                             if (item.Position.Range.Contains(position))
                             {
-                                return GetDeepestTypeInstance(item, position);
+                                return GetDeepestTypeInstance(w.Value, position);
                             }
                         }
                     }

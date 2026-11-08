@@ -13,9 +13,7 @@ sealed partial class DocumentVibrissa
     {
         await AwaitForCompilation(Version, RecompileLevel.Light, cancellationToken).ConfigureAwait(false);
 
-        List<CompletionItem> result = new();
-
-        void AddTypeItems()
+        void AddTypeItems(List<CompletionItem> result)
         {
             foreach (CompiledStruct @struct in CompilerResult.Structs)
             {
@@ -58,7 +56,7 @@ sealed partial class DocumentVibrissa
             result.AddRange(TypeKeywords.List.Select(v => new CompletionItem() { Kind = CompletionItemKind.Keyword, Label = v }));
         }
 
-        void AddExpressionItems()
+        void AddExpressionItems(List<CompletionItem> result)
         {
             {
                 Dictionary<string, List<CompiledFunctionDefinition>> functionOverloads = new();
@@ -153,7 +151,84 @@ sealed partial class DocumentVibrissa
             }
         }
 
+        void AddStatementItems(List<CompletionItem> result)
+        {
+            result.AddRange(StatementKeywords.List.Where(v => v is not StatementKeywords.If and not StatementKeywords.For and not StatementKeywords.While).Select(v => new CompletionItem() { Kind = CompletionItemKind.Keyword, Label = v }));
+
+            {
+                string intType = "i32";
+                if (CompilerResult.Aliases.TryGetValue(v => v.Definition.Attributes.TryGetAttribute(AttributeConstants.InternalType, out AttributeUsage? w0) && w0.TryGetValue(out string? w1) && w1 == InternalTypes.Integer, out var w0))
+                {
+                    intType = w0.Identifier;
+                }
+                else if (CompilerResult.Structs.TryGetValue(v => v.Definition.Attributes.TryGetAttribute(AttributeConstants.InternalType, out AttributeUsage? w0) && w0.TryGetValue(out string? w1) && w1 == InternalTypes.Integer, out var w1))
+                {
+                    intType = w1.Identifier;
+                }
+                else if (CompilerResult.Enums.TryGetValue(v => v.Definition.Attributes.TryGetAttribute(AttributeConstants.InternalType, out AttributeUsage? w0) && w0.TryGetValue(out string? w1) && w1 == InternalTypes.Integer, out var w2))
+                {
+                    intType = w2.Identifier;
+                }
+
+                result.Add(new CompletionItem()
+                {
+                    Label = StatementKeywords.For,
+                    Kind = CompletionItemKind.Keyword,
+                    InsertTextFormat = InsertTextFormat.Snippet,
+                    InsertText =
+                    $"{StatementKeywords.For} ({intType} ${{1:i}}; $1 < ${{2:length}}; $1++)\n" +
+                    "{\n" +
+                    "    $3\n" +
+                    "}\n"
+                });
+            }
+
+            result.Add(new CompletionItem()
+            {
+                Label = StatementKeywords.While,
+                Kind = CompletionItemKind.Keyword,
+                InsertTextFormat = InsertTextFormat.Snippet,
+                InsertText =
+                $"{StatementKeywords.While} ($1)\n" +
+                "{\n" +
+                "    $2\n" +
+                "}\n",
+            });
+
+            result.Add(new CompletionItem()
+            {
+                Label = StatementKeywords.If,
+                Kind = CompletionItemKind.Keyword,
+                InsertTextFormat = InsertTextFormat.Snippet,
+                InsertText =
+                $"{StatementKeywords.If} ($1)\n" +
+                "{\n" +
+                "    $2\n" +
+                "}\n"
+            });
+        }
+
+        void AddBigDefinitionSnippets(List<CompletionItem> result)
+        {
+            result.AddRange(DeclarationKeywords.List.Where(v => v is not DeclarationKeywords.Using).Select(v => new CompletionItem() { Kind = CompletionItemKind.Keyword, Label = v }));
+
+            result.Add(new CompletionItem()
+            {
+                Label = "function",
+                Kind = CompletionItemKind.Snippet,
+                InsertTextFormat = InsertTextFormat.Snippet,
+                Detail = "Function definition",
+                InsertText =
+                $"${{1:{TypeKeywords.Void}}} ${{2:meow}}($3)\n" +
+                "{\n" +
+                "    $4\n" +
+                "}\n",
+            });
+        }
+
         SinglePosition p = e.Position.ToCool();
+
+        List<CompletionItem> result = new();
 
         foreach (AttributeUsage? attribute in
             AST.AliasDefinitions.Cast<IHaveAttributes>()
@@ -215,11 +290,6 @@ sealed partial class DocumentVibrissa
                             && attribute.Parameters[0].Position.Range.Contains(p)
                             && attribute.Parameters[0] is StringLiteralExpression)
                         {
-                            result.AddRange(new CompletionItem()
-                            {
-                                Label = "heap_start",
-                                Kind = CompletionItemKind.Constant,
-                            });
                         }
                         break;
                     case AttributeConstants.InternalType:
@@ -400,7 +470,7 @@ sealed partial class DocumentVibrissa
                     }
                 }
 
-                Dictionary<string, List<(CompiledFunctionDefinition Function, ImmutableDictionary<string, GeneralType>? TypeArguments)>> functionOverloads = new();
+                Dictionary<string, List<(CompiledFunctionDefinition Function, ImmutableDictionary<string, CompiledTemplateArgument>? TemplateArguments)>> functionOverloads = new();
 
                 foreach (GeneralType prevType in checkTypes)
                 {
@@ -414,7 +484,7 @@ sealed partial class DocumentVibrissa
                                 Label = field.Identifier,
                                 LabelDetails = new CompletionItemLabelDetails()
                                 {
-                                    Description = GeneralType.TryInsertTypeParameters(field.Type, structType.TypeArguments).ToString(),
+                                    Description = GeneralType.TryInsertTemplateParameters(field.Type, structType.TemplateArguments).ToString(),
                                 },
                             });
                         }
@@ -429,7 +499,7 @@ sealed partial class DocumentVibrissa
 
                         if (!functionOverloads.TryGetValue(function.Identifier, out var overloads))
                         { overloads = functionOverloads[function.Identifier] = new(); }
-                        overloads.Add((function, (prevType.Is(out StructType? w) && function.Context == w.Struct) ? w.TypeArguments : null));
+                        overloads.Add((function, (prevType.Is(out StructType? w) && function.Context == w.Struct) ? w.TemplateArguments : null));
                     }
                 }
 
@@ -444,7 +514,7 @@ sealed partial class DocumentVibrissa
                             Description = overloads.Count switch
                             {
                                 0 => null,
-                                1 => GeneralType.TryInsertTypeParameters(overloads[0].Function.Type, overloads[0].TypeArguments).ToString(),
+                                1 => GeneralType.TryInsertTemplateParameters(overloads[0].Function.Type, overloads[0].TemplateArguments).ToString(),
                                 _ => $"{overloads.Count} overloads",
                             },
                         },
@@ -457,14 +527,47 @@ sealed partial class DocumentVibrissa
             if (statement is NewInstanceExpression newInstanceExpression
                 && newInstanceExpression.Type.Position.Range.Contains(p))
             {
-                AddTypeItems();
+                AddTypeItems(result);
                 return result;
+            }
+
+            if (statement is InitializationExpression initializationExpression
+                && initializationExpression.Position.Range.Contains(p))
+            {
+                if (initializationExpression.CompiledType is not null)
+                {
+                    bool expectsField = true;
+                    foreach (InitializationExpressionItem item in initializationExpression.Values)
+                    {
+                        if (item.Operator.Position.Range.End <= p && p <= (item.Comma?.Position.Range.Start ?? item.Value.Position.Range.End))
+                        {
+                            expectsField = false;
+                        }
+                    }
+
+                    if (expectsField)
+                    {
+                        ImmutableHashSet<string> assignedFields = initializationExpression.Values.Select(v => v.MemberIdentifier.Content).ToImmutableHashSet();
+
+                        foreach (CompiledField item in initializationExpression.CompiledType.Struct.Fields)
+                        {
+                            if (assignedFields.Contains(item.Identifier)) continue;
+
+                            result.Add(new()
+                            {
+                                Label = item.Identifier,
+                                Kind = CompletionItemKind.Field,
+                            });
+                        }
+                        return result;
+                    }
+                }
             }
 
             if (statement is MissingExpression
                 && statement.Position.Range.Contains(p))
             {
-                AddExpressionItems();
+                AddExpressionItems(result);
                 return result;
             }
         }
@@ -493,22 +596,43 @@ sealed partial class DocumentVibrissa
                 goto _;
             }
 
-            AddTypeItems();
+            AddTypeItems(result);
 
             result.AddRange(ProtectionKeywords.List.Select(v => new CompletionItem() { Kind = CompletionItemKind.Keyword, Label = v }));
             result.AddRange(ModifierKeywords.List.Select(v => new CompletionItem() { Kind = CompletionItemKind.Keyword, Label = v }));
+
+            AddBigDefinitionSnippets(result);
             return result;
         _:;
         }
 
-        AddExpressionItems();
+        if (AST.GetStatementAt(p, out var atP) && atP is not Block)
+        {
+            Logger.Trace($"Inside statement {atP.GetType().Name} {atP}");
 
-        AddTypeItems();
+            AddExpressionItems(result);
 
-        result.AddRange(DeclarationKeywords.List.Select(v => new CompletionItem() { Kind = CompletionItemKind.Keyword, Label = v }));
+            AddTypeItems(result);
+
+            result.AddRange(ModifierKeywords.List.Select(v => new CompletionItem() { Kind = CompletionItemKind.Keyword, Label = v }));
+
+            return result;
+        }
+
+        AddExpressionItems(result);
+
+        AddTypeItems(result);
+
         result.AddRange(ProtectionKeywords.List.Select(v => new CompletionItem() { Kind = CompletionItemKind.Keyword, Label = v }));
         result.AddRange(ModifierKeywords.List.Select(v => new CompletionItem() { Kind = CompletionItemKind.Keyword, Label = v }));
-        result.AddRange(StatementKeywords.List.Select(v => new CompletionItem() { Kind = CompletionItemKind.Keyword, Label = v }));
+
+        AddStatementItems(result);
+        AddBigDefinitionSnippets(result);
+
+        if (!StatementWalker.EnumerateNodes(AST, StatementWalkerFilter.All).Any(v => v.Position.Range.Start <= p))
+        {
+            result.AddRange(new CompletionItem() { Kind = CompletionItemKind.Keyword, Label = DeclarationKeywords.Using });
+        }
 
         return result;
     }

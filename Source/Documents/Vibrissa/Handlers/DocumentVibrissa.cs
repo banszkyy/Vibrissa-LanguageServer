@@ -86,7 +86,7 @@ sealed partial class DocumentVibrissa
             if (!v.Location.Position.Range.Contains(range.Start)) continue;
             if (v is not CompiledFunctionCall compiledFunctionCall) continue;
 
-            CompiledFunction? f = CompilerResult.Functions.FirstOrDefault(v => LanguageCore.Utils.ReferenceEquals(v.Function, compiledFunctionCall.Function.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, compiledFunctionCall.Function.TypeArguments));
+            CompiledFunction? f = CompilerResult.Functions.FirstOrDefault(v => LanguageCore.Utils.ReferenceEquals(v.Function, compiledFunctionCall.Function.Template) && StatementCompiler.TemplateArgumentsEquals(v.TemplateArguments, compiledFunctionCall.Function.TemplateArguments));
 
             if (f is null) break;
 

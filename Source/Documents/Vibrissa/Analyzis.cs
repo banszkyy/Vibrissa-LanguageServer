@@ -8,6 +8,7 @@ using LanguageCore.Parser;
 using LanguageCore.Runtime;
 using LanguageCore.Tokenizing;
 using LanguageCore.Workspaces;
+using OmniSharp.Extensions.LanguageServer.Protocol.Workspace;
 using Diagnostic = LanguageCore.Diagnostic;
 
 namespace LanguageServer.DocumentManagers;
@@ -205,7 +206,7 @@ partial class DocumentVibrissa
             List<ExternalConstant> externalConstants = new();
             externalConstants.AddRange(config.ExternalConstants);
             externalConstants.AddRangeIf([
-                new ExternalConstant("heap_size", BytecodeInterpreterSettings.Default.HeapSize)
+                new ExternalConstant("memory_size", BytecodeInterpreterSettings.Default.MemorySize)
             ], v => !externalConstants.Any(w => v.Name != w.Name));
 
             CompilerSettings compilerSettings = CompilerSettings = new(CodeGeneratorForMain.DefaultCompilerSettings)
@@ -382,11 +383,6 @@ partial class DocumentVibrissa
                     Version = Documents.TryGet(file, out DocumentBase? document) ? document.Version?.Version : null,
                 });
             }
-
-            OmniSharpService.Instance?.Server?.SendNotification<CompilerStatusNotificationArgs>("meow/compiler/status", new()
-            {
-                Status = "done",
-            });
         }
 #pragma warning disable CA1031 // Do not catch general exception types
         catch (Exception ex)

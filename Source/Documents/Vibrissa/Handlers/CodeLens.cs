@@ -6,7 +6,7 @@ sealed partial class DocumentVibrissa
 {
     public override async Task<IEnumerable<CodeLens>?> CodeLens(CodeLensParams e, CancellationToken cancellationToken)
     {
-        //await AwaitForCompilation(Version, cancellationToken).ConfigureAwait(false);
+        await AwaitForCompilation(Version, RecompileLevel.None, cancellationToken).ConfigureAwait(false);
 
         List<CodeLens> result = new();
 
@@ -52,18 +52,70 @@ sealed partial class DocumentVibrissa
             });
         }
 
-        foreach (CompiledStruct @struct in CompilerResult.Structs)
+        foreach (CompiledStruct definition in CompilerResult.Structs)
         {
-            if (@struct.Definition.File != Uri) continue;
+            if (definition.Definition.File != Uri) continue;
 
             result.Add(new CodeLens()
             {
-                Range = @struct.Definition.Identifier.Position.Range.ToOmniSharp(),
+                Range = definition.Definition.Identifier.Position.Range.ToOmniSharp(),
                 Command = new Command()
                 {
-                    Title = $"{@struct.References.DistinctBy(v => v.Source).Count(v => !v.SourceLocation.IsDefault)} reference",
+                    Title = $"{definition.References.DistinctBy(v => v.Source).Count(v => !v.SourceLocation.IsDefault)} reference",
                 },
             });
+
+            foreach (CompiledField member in definition.Fields)
+            {
+                result.Add(new CodeLens()
+                {
+                    Range = member.Definition.Identifier.Position.Range.ToOmniSharp(),
+                    Command = new Command()
+                    {
+                        Title = $"{member.References.DistinctBy(v => v.Source).Count(v => !v.SourceLocation.IsDefault)} reference",
+                    },
+                });
+            }
+        }
+
+        foreach (CompiledAlias definition in CompilerResult.Aliases)
+        {
+            if (definition.Definition.File != Uri) continue;
+
+            result.Add(new CodeLens()
+            {
+                Range = definition.Definition.Identifier.Position.Range.ToOmniSharp(),
+                Command = new Command()
+                {
+                    Title = $"{definition.References.DistinctBy(v => v.Source).Count(v => !v.SourceLocation.IsDefault)} reference",
+                },
+            });
+        }
+
+        foreach (CompiledEnum definition in CompilerResult.Enums)
+        {
+            if (definition.Definition.File != Uri) continue;
+
+            result.Add(new CodeLens()
+            {
+                Range = definition.Definition.Identifier.Position.Range.ToOmniSharp(),
+                Command = new Command()
+                {
+                    Title = $"{definition.References.DistinctBy(v => v.Source).Count(v => !v.SourceLocation.IsDefault)} reference",
+                },
+            });
+
+            foreach (CompiledEnumMember member in definition.Members)
+            {
+                result.Add(new CodeLens()
+                {
+                    Range = member.Definition.Identifier.Position.Range.ToOmniSharp(),
+                    Command = new Command()
+                    {
+                        Title = $"{member.References.DistinctBy(v => v.Source).Count(v => !v.SourceLocation.IsDefault)} reference",
+                    },
+                });
+            }
         }
 
         return result;

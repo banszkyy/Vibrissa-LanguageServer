@@ -36,7 +36,7 @@ sealed partial class DocumentVibrissa
                     foreach (TypeInstance x in EnumerateNestedTypeInstances(w.To)) yield return x;
                     break;
                 case TypeInstanceSimple w:
-                    if (w.TypeArguments.HasValue) foreach (TypeInstance x in w.TypeArguments.Value.SelectMany(v => EnumerateNestedTypeInstances(v))) yield return x;
+                    if (w.TemplateArguments.HasValue) foreach (TypeInstance x in w.TemplateArguments.Value.SelectMany(v => v is TemplateArgumentExpressionType w ? EnumerateNestedTypeInstances(w.Value) : [])) yield return x;
                     break;
                 case TypeInstanceStackArray w:
                     foreach (TypeInstance x in EnumerateNestedTypeInstances(w.StackArrayOf)) yield return x;
@@ -52,16 +52,16 @@ sealed partial class DocumentVibrissa
             {
                 if (arrayType.StackArraySize is null
                     && arrayType.CompiledType is not null
-                    && arrayType.CompiledType.Length.HasValue)
+                    && arrayType.CompiledType.TryGetLength(out int l))
                 {
                     result.Add(new InlayHint()
                     {
                         Kind = InlayHintKind.Parameter,
-                        Label = new StringOrInlayHintLabelParts(arrayType.CompiledType.Length.Value.ToString()),
+                        Label = new StringOrInlayHintLabelParts(l.ToString()),
                         Position = arrayType.SquareBrackets.Start.Position.Range.End.ToOmniSharp(),
                         TextEdits = new Container<TextEdit>(new TextEdit()
                         {
-                            NewText = arrayType.CompiledType.Length.Value.ToString(),
+                            NewText = l.ToString(),
                             Range = new Range<SinglePosition>(arrayType.SquareBrackets.Start.Position.Range.End, arrayType.SquareBrackets.Start.Position.Range.End).ToOmniSharp(),
                         })
                     });
@@ -76,7 +76,7 @@ sealed partial class DocumentVibrissa
                 case AnyCallExpression v:
                     {
                         if (v.Reference is null) continue;
-                        if (templateHints && v.TypeArguments is null && v.Reference.TypeArguments is not null && v.Reference.Function.Definition.Template is not null)
+                        if (templateHints && v.TemplateArguments is null && v.Reference.TemplateArguments is not null && v.Reference.Function.Definition.Template is not null)
                         {
                             StringBuilder? newText = new();
                             List<InlayHintLabelPart> parts = [];
@@ -84,7 +84,7 @@ sealed partial class DocumentVibrissa
                             foreach (Token i in v.Reference.Function.Definition.Template.Parameters)
                             {
                                 if (parts.Count > 0) parts.Add(new InlayHintLabelPart() { Value = ", " });
-                                GeneralType? w = v.Reference.TypeArguments.TryGetValue(i.Content, out GeneralType? w2) ? w2 : null;
+                                CompiledTemplateArgument? w = v.Reference.TemplateArguments.TryGetValue(i.Content, out CompiledTemplateArgument? w2) ? w2 : null;
                                 if (w is null) newText = null;
                                 else newText?.Append(w.ToString());
                                 parts.Add(new()
@@ -92,9 +92,13 @@ sealed partial class DocumentVibrissa
                                     Value = w is null ? "?" : w.ToString(),
                                     Location = w switch
                                     {
-                                        AliasType x => x.Definition.Location.ToOmniSharp(),
-                                        StructType x => x.Struct.Location.ToOmniSharp(),
-                                        EnumType x => x.Definition.Location.ToOmniSharp(),
+                                        CompiledTemplateArgumentType x => x.Value.FinalValue switch
+                                        {
+                                            AliasType y => y.Definition.Location.ToOmniSharp(),
+                                            StructType y => y.Struct.Location.ToOmniSharp(),
+                                            EnumType y => y.Definition.Location.ToOmniSharp(),
+                                            _ => null,
+                                        },
                                         _ => null,
                                     },
                                 });

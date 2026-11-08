@@ -119,6 +119,7 @@ static class StatementExtensions
         NewInstanceExpression v => v.Type.Position,
         ManagedTypeCastExpression v => v.Type.Position,
         TypeInstanceSimple v => v.Identifier.Position,
+        InitializationExpressionItem v => v.MemberIdentifier.Position,
         _ => statement.Position,
     };
 

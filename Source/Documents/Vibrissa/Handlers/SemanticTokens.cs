@@ -36,8 +36,11 @@ sealed partial class DocumentVibrissa
                 case TokenAnalyzedType.ParameterName:
                     builder.Push(token.Position.Range.ToOmniSharp(), SemanticTokenType.Parameter, Array.Empty<SemanticTokenModifier>());
                     break;
-                case TokenAnalyzedType.TypeParameter:
+                case TokenAnalyzedType.TemplateParameterType:
                     builder.Push(token.Position.Range.ToOmniSharp(), SemanticTokenType.TypeParameter, Array.Empty<SemanticTokenModifier>());
+                    break;
+                case TokenAnalyzedType.TemplateParameterValue:
+                    builder.Push(token.Position.Range.ToOmniSharp(), SemanticTokenType.Variable, SemanticTokenModifier.Readonly);
                     break;
                 case TokenAnalyzedType.Keyword:
                     //builder.Push(token.Position.Range.ToOmniSharp(), SemanticTokenType.Keyword, new SemanticTokenModifier("meow"));

@@ -98,13 +98,13 @@ sealed partial class DocumentVibrissa
                     });
                 }
 
-                if (w.CompiledTypeExpression is CompiledGenericTypeExpression genericType && genericType.Definition is not null)
+                if (w.CompiledTypeExpression is CompiledUnresolvedTemplateTypeExpression templateType && templateType.Definition is not null)
                 {
                     return new(new LocationLink()
                     {
                         OriginSelectionRange = position.ToOmniSharp(),
-                        TargetRange = genericType.Definition.Position.Range.ToOmniSharp(),
-                        TargetSelectionRange = genericType.Definition.Position.Range.ToOmniSharp(),
+                        TargetRange = templateType.Definition.Position.Range.ToOmniSharp(),
+                        TargetSelectionRange = templateType.Definition.Position.Range.ToOmniSharp(),
                         TargetUri = DocumentUri,
                     });
                 }

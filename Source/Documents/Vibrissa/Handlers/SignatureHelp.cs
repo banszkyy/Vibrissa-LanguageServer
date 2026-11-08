@@ -30,7 +30,7 @@ sealed partial class DocumentVibrissa
             {
                 if (variableDeclaration.Type is TypeInstanceFunction functionType
                     && functionType.FunctionReturnType is TypeInstanceSimple typeInstanceSimple
-                    && !typeInstanceSimple.TypeArguments.HasValue)
+                    && !typeInstanceSimple.TemplateArguments.HasValue)
                 {
                     if (!new Position(functionType.Brackets).Range.Contains(p)) continue;
                     call = new AnyCallExpression(

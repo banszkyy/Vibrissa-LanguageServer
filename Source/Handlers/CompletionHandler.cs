@@ -26,13 +26,12 @@ sealed class CompletionHandler : ICompletionHandler
 
     public CompletionRegistrationOptions GetRegistrationOptions(CompletionCapability capability, ClientCapabilities clientCapabilities)
     {
-        capability.ContextSupport = false;
         return new CompletionRegistrationOptions()
         {
             DocumentSelector = TextDocumentSelector.ForLanguage(LanguageCore.LanguageConstants.LanguageId),
             ResolveProvider = false,
-            TriggerCharacters = new string[] { ".", "(" },
-            AllCommitCharacters = new string[] { ".", "(" },
+            TriggerCharacters = new string[] { ".", "(", ",", "{" },
+            AllCommitCharacters = new string[] { ".", "(", ",", "{" },
             CompletionItem = new()
             {
                 LabelDetailsSupport = true,

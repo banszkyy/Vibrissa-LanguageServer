@@ -16,7 +16,7 @@ sealed partial class DocumentVibrissa
         AliasType v => GetAliasHover(v.Definition),
         EnumType v => GetEnumHover(v.Definition),
         BuiltinType v => $"{v}",
-        GenericType v => $"(generic) {v.Identifier}",
+        UnresolvedTemplateType v => $"(template parameter) {v.Identifier}",
         StructType v => GetStructHover(v.Struct),
         _ => type.ToString()
     };
@@ -25,11 +25,11 @@ sealed partial class DocumentVibrissa
         CompiledAliasTypeExpression v => GetAliasHover(v.Definition),
         CompiledEnumTypeExpression v => GetEnumHover(v.Definition),
         CompiledBuiltinTypeExpression v => $"{v}",
-        CompiledGenericTypeExpression v => $"(generic) {v.Identifier}",
+        CompiledUnresolvedTemplateTypeExpression v => $"(template parameter) {v.Identifier}",
         CompiledStructTypeExpression v => GetStructHover(v.Struct),
         _ => type.ToString()
     };
-    static string GetFunctionHover<TFunction>(TFunction function, ImmutableDictionary<string, GeneralType>? typeArguments)
+    static string GetFunctionHover<TFunction>(TFunction function, ImmutableDictionary<string, CompiledTemplateArgument>? templateArguments)
         where TFunction : ICompiledFunctionDefinition, ICompiledDefinition<FunctionThingDefinition>
     {
         StringBuilder builder = new();
@@ -41,13 +41,13 @@ sealed partial class DocumentVibrissa
             builder.Append(' ');
         }
 
-        builder.Append(GeneralType.TryInsertTypeParameters(function.Type, typeArguments) ?? function.Type);
+        builder.Append(GeneralType.TryInsertTemplateParameters(function.Type, templateArguments) ?? function.Type);
         builder.Append(' ');
         builder.Append(function.Definition.Identifier.ToString());
         if (function.Definition.Template is not null)
         {
             builder.Append('<');
-            builder.AppendJoin(", ", typeArguments is not null ? function.Definition.Template.Parameters.Select(v => typeArguments[v.Content].ToString()) : function.Definition.Template.Parameters.Select(v => v.Content));
+            builder.AppendJoin(", ", templateArguments is not null ? function.Definition.Template.Parameters.Select(v => templateArguments[v.Content].ToString()) : function.Definition.Template.Parameters.Select(v => v.Content));
             builder.Append('>');
         }
         builder.Append('(');
@@ -58,7 +58,7 @@ sealed partial class DocumentVibrissa
             if (function.Definition.Parameters[i].Modifiers.Length > 0)
             { builder.Append(' '); }
 
-            builder.Append(GeneralType.TryInsertTypeParameters(function.Parameters[i].Type, typeArguments).ToString());
+            builder.Append(GeneralType.TryInsertTemplateParameters(function.Parameters[i].Type, templateArguments).ToString());
 
             builder.Append(' ');
             builder.Append(function.Parameters[i].Identifier);
@@ -96,9 +96,9 @@ sealed partial class DocumentVibrissa
             case CompiledStruct v: return GetStructHover(v);
             case CompiledEnum v: return GetEnumHover(v);
             case CompiledEnumMember v: return GetEnumMemberHover(v);
-            case StatementCompiler.FunctionQueryResult<CompiledFunctionDefinition> v: return GetFunctionHover(v.Function, v.TypeArguments);
-            case StatementCompiler.FunctionQueryResult<CompiledOperatorDefinition> v: return GetFunctionHover(v.Function, v.TypeArguments);
-            case StatementCompiler.FunctionQueryResult<CompiledGeneralFunctionDefinition> v: return GetFunctionHover(v.Function, v.TypeArguments);
+            case StatementCompiler.FunctionQueryResult<CompiledFunctionDefinition> v: return GetFunctionHover(v.Function, v.TemplateArguments);
+            case StatementCompiler.FunctionQueryResult<CompiledOperatorDefinition> v: return GetFunctionHover(v.Function, v.TemplateArguments);
+            case StatementCompiler.FunctionQueryResult<CompiledGeneralFunctionDefinition> v: return GetFunctionHover(v.Function, v.TemplateArguments);
             case ParameterDefinition v: return GetParameterHover(v);
             case FieldDefinition v: return GetFieldHover(v);
             case StructDefinition v: return GetStructHover(v);
@@ -230,6 +230,7 @@ sealed partial class DocumentVibrissa
         }
         else if (AST.GetStatementAt(position, out Statement? statement))
         {
+            Logger.Trace($"Statement on cursor: {statement.GetType().Name} {statement}");
             foreach (ISmallNode item in StatementWalker.EnumerateNodes(statement, StatementWalkerFilter.At(e.Position.ToCool())))
             {
                 Position checkPosition = StatementExtensions.GetInteractivePosition(item);
