@@ -8,7 +8,6 @@ using LanguageCore.Parser;
 using LanguageCore.Runtime;
 using LanguageCore.Tokenizing;
 using LanguageCore.Workspaces;
-using OmniSharp.Extensions.LanguageServer.Protocol.Workspace;
 using Diagnostic = LanguageCore.Diagnostic;
 
 namespace LanguageServer.DocumentManagers;
@@ -31,7 +30,7 @@ partial class DocumentVibrissa
 
     public CompilerSettings CompilerSettings;
 
-    Task<bool>? CompilationTask;
+    public Task<bool>? CompilationTask;
     DocumentVersion CompiledVersion;
     DocumentVersion CurrentlyCompilingVersion;
     DocumentVersion DesiredCompiledVersion;
@@ -94,7 +93,7 @@ partial class DocumentVibrissa
         return CompilationTask.WaitAsync(cancellationToken);
     }
 
-    void CompileAsync(RecompileLevel level, CancellationToken cancellationToken = default)
+    void CompileAsync(RecompileLevel level)
     {
         CurrentlyCompilingVersion = Version ?? DocumentVersion.Zero(0);
 
@@ -224,7 +223,6 @@ partial class DocumentVibrissa
                 Cache = Cache,
                 OptimizationDiagnostics = true,
                 SourcePartiallyAvaliable = true,
-                CancellationToken = cancellationToken,
             };
             HashSet<Uri> compiledFiles;
             CompilerResult compilerResult = CompilerResult.MakeEmpty(Uri);
@@ -383,13 +381,19 @@ partial class DocumentVibrissa
                     Version = Documents.TryGet(file, out DocumentBase? document) ? document.Version?.Version : null,
                 });
             }
+
+            OmniSharpService.Instance?.Server?.SendNotification<CompilerStatusNotificationArgs>("meow/compiler/status", new()
+            {
+                Status = "done",
+            });
         }
 #pragma warning disable CA1031 // Do not catch general exception types
         catch (Exception ex)
 #pragma warning restore CA1031 // Do not catch general exception types
         {
+            Logger.Error("FATAL ERROR");
             Logger.Error(ex);
-            OmniSharpService.Instance?.Server?.Window?.ShowError($"Vibrissa {ex.GetType().Name}: {ex.Message}");
+            OmniSharpService.Instance?.Server?.Window?.ShowError($"{ex.GetType().Name}: {ex.Message}");
             OmniSharpService.Instance?.Server?.SendNotification<CompilerStatusNotificationArgs>("meow/compiler/status", new()
             {
                 Status = "failed",

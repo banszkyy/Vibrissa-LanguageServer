@@ -62,7 +62,7 @@ sealed partial class DocumentVibrissa
 
             builder.Append(' ');
             builder.Append(function.Parameters[i].Identifier);
-            if (function.Parameters[i].Definition.SpreadOperator is not null) builder.Append(function.Parameters[i].Definition.SpreadOperator!.ToString());
+            builder.Append(function.Parameters[i].Definition.SpreadOperator?.ToString());
         }
         builder.Append(')');
         return builder.ToString();
@@ -76,8 +76,8 @@ sealed partial class DocumentVibrissa
     static string GetEnumMemberHover(EnumMemberDefinition enumMember) => $"{enumMember.Identifier} = {enumMember.Value}";
     static string GetVariableHover(CompiledVariableDefinition variable) => $"(variable) {variable.Type} {variable.Identifier}";
     static string GetConstantHover(CompiledVariableConstant variable) => $"(constant) {variable.Type} {variable.Identifier}{(variable.Value.IsNull ? "" : $" = {variable.Value.ToStringValue()}")}";
-    static string GetParameterHover(CompiledParameter parameter) => $"(parameter) {string.Join(null, parameter.Definition.Modifiers.Select(v => $"{v} "))}{parameter.Type} {parameter.Identifier}";
-    static string GetParameterHover(ParameterDefinition parameter) => $"(parameter) {string.Join(null, parameter.Modifiers.Select(v => $"{v} "))}{parameter.Type} {parameter.Identifier}";
+    static string GetParameterHover(CompiledParameter parameter) => $"(parameter) {string.Join(null, parameter.Definition.Modifiers.Select(v => $"{v} "))}{parameter.Type} {parameter.Identifier}{parameter.Definition.SpreadOperator}";
+    static string GetParameterHover(ParameterDefinition parameter) => $"(parameter) {string.Join(null, parameter.Modifiers.Select(v => $"{v} "))}{parameter.Type} {parameter.Identifier}{parameter.SpreadOperator}";
     static string GetFieldHover(CompiledField field) => $"(field) {field.Type} {field.Identifier}";
     static string GetFieldHover(FieldDefinition field) => $"(field) {field.Type} {field.Identifier}";
 
@@ -116,7 +116,7 @@ sealed partial class DocumentVibrissa
 
         if (token == null)
         {
-            Logger.Debug($"No token at {e.Position.ToStringMin()} ({Tokens.Length})");
+            Logger.Debug($"No token at {position.ToStringMin()} ({Tokens.Length})");
             return null;
         }
 
@@ -168,78 +168,92 @@ sealed partial class DocumentVibrissa
 
         if (CompilerResult.GetFunctionAt(Uri, position, out CompiledFunctionDefinition? function))
         {
+            Logger.Debug($"Function definiton on cursor: {function}");
             definitionHover = GetFunctionHover(function, null);
             docsHover = GetCommentDocumentation(function.Definition);
         }
         else if (CompilerResult.GetGeneralFunctionAt(Uri, position, out CompiledGeneralFunctionDefinition? generalFunction))
         {
+            Logger.Debug($"General function definiton on cursor: {generalFunction}");
             definitionHover = GetFunctionHover(generalFunction, null);
             docsHover = GetCommentDocumentation(generalFunction.Definition);
         }
         else if (CompilerResult.GetOperatorAt(Uri, position, out CompiledOperatorDefinition? @operator))
         {
+            Logger.Debug($"Operator definiton on cursor: {@operator}");
             definitionHover = GetFunctionHover(@operator, null);
             docsHover = GetCommentDocumentation(@operator.Definition);
         }
         else if (CompilerResult.GetStructAt(Uri, position, out CompiledStruct? @struct))
         {
+            Logger.Debug($"Struct definiton on cursor: {@struct}");
             definitionHover = GetStructHover(@struct);
             docsHover = GetCommentDocumentation(@struct.Definition);
         }
         else if (CompilerResult.GetEnumAt(Uri, position, out var @enum))
         {
+            Logger.Debug($"Enum definiton on cursor: {@enum}");
             definitionHover = GetEnumHover(@enum);
             docsHover = GetCommentDocumentation(@enum.Definition);
         }
         else if (CompilerResult.GetEnumMemberAt(Uri, position, out var enumMember))
         {
+            Logger.Debug($"Enum member definiton on cursor: {enumMember}");
             definitionHover = GetEnumMemberHover(enumMember);
             docsHover = GetCommentDocumentation(enumMember.Definition);
         }
         else if (CompilerResult.GetFieldAt(Uri, position, out CompiledField? field))
         {
+            Logger.Debug($"Field definiton on cursor: {field}");
             definitionHover = GetFieldHover(field);
             docsHover = GetCommentDocumentation(field.Definition);
         }
         else if (CompilerResult.GetParameterDefinitionAt(Uri, position, out ParameterDefinition? parameter, out _) &&
                  parameter.Identifier.Position.Range.Contains(position))
         {
+            Logger.Debug($"Parameter definiton on cursor: {parameter}");
             definitionHover = GetParameterHover(parameter);
             docsHover = GetCommentDocumentation(parameter);
         }
 
         else if (AST.GetStructAt(position, out StructDefinition? @struct2))
         {
+            Logger.Debug($"Struct definiton on cursor: {@struct}");
             definitionHover = GetStructHover(@struct2);
             docsHover = GetCommentDocumentation(@struct2);
         }
         else if (AST.GetEnumAt(position, out var @enum2))
         {
+            Logger.Debug($"Enum definiton on cursor: {@enum}");
             definitionHover = GetEnumHover(@enum2);
             docsHover = GetCommentDocumentation(@enum2);
         }
         else if (AST.GetEnumMemberAt(position, out var enumMember1))
         {
+            Logger.Debug($"Enum member definiton on cursor: {enumMember}");
             definitionHover = GetEnumMemberHover(enumMember1);
             docsHover = GetCommentDocumentation(@enumMember1);
         }
         else if (AST.GetFieldAt(position, out FieldDefinition? field2))
         {
+            Logger.Debug($"Field definiton on cursor: {field}");
             definitionHover = GetFieldHover(field2);
             docsHover = GetCommentDocumentation(field2);
         }
-        else if (AST.GetStatementAt(position, out Statement? statement))
+        else if (AST.GetNodeAt(position, out ISmallNode? statement))
         {
-            Logger.Trace($"Statement on cursor: {statement.GetType().Name} {statement}");
-            foreach (ISmallNode item in StatementWalker.EnumerateNodes(statement, StatementWalkerFilter.At(e.Position.ToCool())))
+            Position checkPosition = StatementExtensions.GetInteractivePosition(statement);
+
+            if (!checkPosition.Range.Contains(position))
             {
-                Position checkPosition = StatementExtensions.GetInteractivePosition(item);
-
-                if (!checkPosition.Range.Contains(e.Position.ToCool())) continue;
-
+                Logger.Debug($"Node not on cursor: {statement.GetType().Name} {statement} ({checkPosition.Range.Start.ToStringMin()}-{checkPosition.Range.End.ToStringMin()} {position})");
+            }
+            else
+            {
+                Logger.Trace($"Node on cursor: {statement.GetType().Name} {statement}");
                 range = checkPosition.Range;
 
-                if (item is IntLiteralExpression intLiteralExpression)
+                if (statement is IntLiteralExpression intLiteralExpression)
                 {
                     StringBuilder numbers = new();
                     string base2 = Convert.ToString(intLiteralExpression.Value, 2);
@@ -268,7 +282,7 @@ sealed partial class DocumentVibrissa
                     if (_char is not null) numbers.Append($"{type}'{_char}'");
                     definitionHover = numbers.ToString();
                 }
-                else if (item is FloatLiteralExpression floatLiteralExpression)
+                else if (statement is FloatLiteralExpression floatLiteralExpression)
                 {
                     string? type =
                         floatLiteralExpression.CompiledType is not null
@@ -277,7 +291,7 @@ sealed partial class DocumentVibrissa
 
                     definitionHover = $"{type}{Convert.ToString(floatLiteralExpression.Value)}";
                 }
-                else if (item is CharLiteralExpression charLiteralExpression)
+                else if (statement is CharLiteralExpression charLiteralExpression)
                 {
                     StringBuilder numbers = new();
                     string base2 = Convert.ToString(charLiteralExpression.Value, 2);
@@ -306,7 +320,7 @@ sealed partial class DocumentVibrissa
                     numbers.Append($"{type}'{_char}'");
                     definitionHover = numbers.ToString();
                 }
-                else if (item is BinaryOperatorCallExpression binaryOperatorCallExpression
+                else if (statement is BinaryOperatorCallExpression binaryOperatorCallExpression
                     && binaryOperatorCallExpression.Reference is null
                     && binaryOperatorCallExpression.CompiledType is not null
                     && binaryOperatorCallExpression.Left.CompiledType is not null
@@ -314,25 +328,25 @@ sealed partial class DocumentVibrissa
                 {
                     definitionHover = $"{binaryOperatorCallExpression.CompiledType} {binaryOperatorCallExpression.Operator}({binaryOperatorCallExpression.Left.CompiledType} left, {binaryOperatorCallExpression.Right.CompiledType} right)";
                 }
-                else if (item is UnaryOperatorCallExpression unaryOperatorCallExpression
+                else if (statement is UnaryOperatorCallExpression unaryOperatorCallExpression
                     && unaryOperatorCallExpression.Reference is null
                     && unaryOperatorCallExpression.CompiledType is not null
                     && unaryOperatorCallExpression.Expression.CompiledType is not null)
                 {
                     definitionHover = $"{unaryOperatorCallExpression.CompiledType} {unaryOperatorCallExpression.Operator}({unaryOperatorCallExpression.Expression.CompiledType} value)";
                 }
-                else if (item is Expression statementWithValue && statementWithValue.CompiledType is not null)
+                else if (statement is Expression statementWithValue && statementWithValue.CompiledType is not null)
                 {
                     typeHover = GetTypeHover(statementWithValue.CompiledType);
                 }
 
-                if (item is IReferenceableTo referenceableTo)
+                if (statement is IReferenceableTo referenceableTo)
                 {
                     //Logger.Trace($"{referenceableTo.Reference?.GetType().Name ?? "null"} {referenceableTo.Reference}");
-                    definitionHover = GetDefinitionHover(referenceableTo.Reference);
+                    definitionHover ??= GetDefinitionHover(referenceableTo.Reference);
                     if (referenceableTo.Reference is ILocated locatedReference)
                     {
-                        docsHover = GetCommentDocumentation(locatedReference);
+                        docsHover ??= GetCommentDocumentation(locatedReference);
                     }
                 }
                 else
@@ -345,8 +359,9 @@ sealed partial class DocumentVibrissa
         {
             foreach (UsingDefinition @using in AST.Usings)
             {
-                if (new Position(@using.Path.DefaultIfEmpty(@using.Keyword)).Range.Contains(e.Position.ToCool()))
+                if (new Position(@using.Path.DefaultIfEmpty(@using.Keyword)).Range.Contains(position))
                 {
+                    Logger.Trace($"Using definition on cursor: {@using}");
                     if (@using.CompiledUri != null)
                     { definitionHover = $"{@using.Keyword} \"{@using.CompiledUri}\""; }
                     break;
@@ -355,8 +370,9 @@ sealed partial class DocumentVibrissa
         }
 
         if (typeHover is null
-            && GetTypeInstanceAt(e.Position.ToCool(), true, out TypeInstance? typeInstance))
+            && GetTypeInstanceAt(position, true, out TypeInstance? typeInstance))
         {
+            Logger.Trace($"Type instance on cursor: {typeInstance}");
             if (typeInstance is TypeInstanceSimple typeInstanceSimple)
             {
                 if (typeInstanceSimple.CompiledType is not null)
@@ -394,6 +410,12 @@ sealed partial class DocumentVibrissa
         {
             if (contents.Length > 0) contents.AppendLine("---");
             contents.AppendLine(docsHover);
+        }
+
+        if (contents.Length == 0)
+        {
+            Logger.Trace($"Empty hover");
+            return null;
         }
 
         return new Hover()

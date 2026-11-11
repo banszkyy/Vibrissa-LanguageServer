@@ -66,11 +66,10 @@ sealed class OmniSharpService
            .WithHandler<TextDocumentSyncHandler>()
            .WithHandler<DocumentOnTypeFormattingHandler>()
            .WithHandler<FoldingRangeHandler>()
-        //.WithHandler<NotebookDocumentSyncHandler>()
+            //.WithHandler<NotebookDocumentSyncHandler>()
         ;
 
         options.AddHandler<RecompileHandler>("meow/compiler/recompile");
-
         options.AddHandler<DecorationsHandler>("meow/decorations");
 
         options.OnInitialize((server, request, cancellationToken) =>
