@@ -1,3 +1,4 @@
+using LanguageCore;
 using LanguageCore.Tokenizing;
 
 namespace LanguageServer.DocumentManagers;
@@ -82,7 +83,22 @@ sealed partial class DocumentVibrissa
                             builder.Push(token.Position.Range.ToOmniSharp(), SemanticTokenType.Number, Array.Empty<SemanticTokenModifier>());
                             break;
                         case TokenType.PreprocessSkipped:
-                            builder.Push(token.Position.Range.ToOmniSharp(), SemanticTokenType.Comment, Array.Empty<SemanticTokenModifier>());
+                            if (token.Position.Range.Start.Line != token.Position.Range.End.Line)
+                            {
+                                // FIXME: more preprocessor info
+                                var lines = Content?.Split('\n') ?? [];
+                                for (int i = token.Position.Range.Start.Line; i < token.Position.Range.End.Line; i++)
+                                {
+                                    if (i >= 0 && i < lines.Length)
+                                    {
+                                        builder.Push(new Range<SinglePosition>(new SinglePosition(i, 0), new SinglePosition(i, lines[i].Length)).ToOmniSharp(), SemanticTokenType.Comment, Array.Empty<SemanticTokenModifier>());
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                builder.Push(token.Position.Range.ToOmniSharp(), SemanticTokenType.Comment, Array.Empty<SemanticTokenModifier>());
+                            }
                             break;
                     }
                     break;
