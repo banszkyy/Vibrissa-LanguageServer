@@ -18,7 +18,7 @@ sealed partial class DocumentVibrissa
 
         AnyCallExpression? call = null;
 
-        foreach (ISmallNode item in StatementWalker.EnumerateNodes(AST, StatementWalkerFilter.At(p)))
+        foreach (INode item in StatementWalker.EnumerateNodes(AST, StatementWalkerFilter.At(p)))
         {
             if (item is AnyCallExpression anyCall)
             {

@@ -4,7 +4,7 @@ sealed class ReferencesHandler : IReferencesHandler
 {
     public async Task<LocationContainer?> Handle(ReferenceParams request, CancellationToken cancellationToken)
     {
-        Logger.Debug($"[Handler] References ({request.TextDocument}:{request.Position.ToStringMin()}) ({request.Context})");
+        Logger.Debug($"[Handler] References ({request.TextDocument}:{request.Position.ToReadable()}) ({request.Context})");
 
         if (OmniSharpService.Instance?.Server == null) return null;
         if (!OmniSharpService.Instance.Documents.TryGet(request.TextDocument.Uri, out DocumentBase? document))

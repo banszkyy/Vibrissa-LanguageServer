@@ -4,7 +4,7 @@ sealed class DocumentFormattingHandler : IDocumentFormattingHandler
 {
     public async Task<TextEditContainer?> Handle(DocumentFormattingParams request, CancellationToken cancellationToken)
     {
-        Logger.Debug($"[Handler] DocumentFormatting ({request.TextDocument} {request.Options})");
+        Logger.Debug($"[Handler] DocumentFormatting ({request.TextDocument}, {string.Join(", ", request.Options.Select(v => $"'{v.Key}'='{v.Value}'"))})");
 
         if (OmniSharpService.Instance?.Server == null) return null;
         if (!OmniSharpService.Instance.Documents.TryGet(request.TextDocument.Uri, out DocumentBase? document))

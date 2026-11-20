@@ -34,7 +34,7 @@ sealed partial class DocumentVibrissa
             ParsedFile f = CompilerResult.RawTokens.FirstOrDefault(v => v.File == file);
             if (f.File is null)
             {
-                Logger.Warn($"Couldn't get comment documentation for {file}:{position.ToStringMin()} (file not found)");
+                Logger.Warn($"Couldn't get comment documentation for {file}:{position.ToReadable()} (file not found)");
                 return false;
             }
             tokens = f.Tokens.Tokens;
@@ -42,7 +42,7 @@ sealed partial class DocumentVibrissa
 
         if (tokens.IsDefault)
         {
-            Logger.Warn($"Couldn't get comment documentation for {file}:{position.ToStringMin()} (file not tokenized)");
+            Logger.Warn($"Couldn't get comment documentation for {file}:{position.ToReadable()} (file not tokenized)");
             return false;
         }
 

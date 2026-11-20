@@ -4,7 +4,7 @@ sealed class ImplementationHandler : IImplementationHandler
 {
     public async Task<LocationOrLocationLinks?> Handle(ImplementationParams request, CancellationToken cancellationToken)
     {
-        Logger.Debug($"[Handler] Implementation ({request.TextDocument}:{request.Position.ToStringMin()})");
+        Logger.Debug($"[Handler] Implementation ({request.TextDocument}:{request.Position.ToReadable()})");
 
         if (OmniSharpService.Instance?.Server == null) return null;
         if (!OmniSharpService.Instance.Documents.TryGet(request.TextDocument.Uri, out DocumentBase? document))

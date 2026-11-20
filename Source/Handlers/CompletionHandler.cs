@@ -4,7 +4,7 @@ sealed class CompletionHandler : ICompletionHandler
 {
     public async Task<CompletionList> Handle(CompletionParams request, CancellationToken cancellationToken)
     {
-        Logger.Debug($"[Handler] Completion ({request.TextDocument}:{request.Position.ToStringMin()}) ({request.Context})");
+        Logger.Debug($"[Handler] Completion ({request.TextDocument}:{request.Position.ToReadable()}) ({request.Context})");
 
         if (OmniSharpService.Instance?.Server == null) return new CompletionList();
         if (!OmniSharpService.Instance.Documents.TryGet(request.TextDocument.Uri, out DocumentBase? document))

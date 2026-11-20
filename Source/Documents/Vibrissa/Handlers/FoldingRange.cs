@@ -45,7 +45,7 @@ sealed partial class DocumentVibrissa
             });
         }
 
-        foreach (ISmallNode v in StatementWalker.EnumerateNodes(AST, StatementWalkerFilter.All))
+        foreach (INode v in StatementWalker.EnumerateNodes(AST, StatementWalkerFilter.All))
         {
             switch (v)
             {

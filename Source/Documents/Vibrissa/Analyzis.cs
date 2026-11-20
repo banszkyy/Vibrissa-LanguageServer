@@ -129,11 +129,12 @@ partial class DocumentVibrissa
                 }
                 else
                 {
-                    VibrissaProject.Projects[configurationPath] = project = new VibrissaProject()
+                    project = new VibrissaProject()
                     {
                         Configuration = config,
                         ConfigurationPath = configurationPath,
                     };
+                    VibrissaProject.Projects.AddOrUpdate(configurationPath, project, (_, _) => project);
 
                     if (config.IsProject)
                     {
@@ -219,6 +220,8 @@ partial class DocumentVibrissa
                 TokenizerSettings = new TokenizerSettings(TokenizerSettings.Default)
                 {
                     TokenizeComments = true,
+                    TokenizeWhitespaces = true,
+                    DistinguishBetweenSpacesAndNewlines = true,
                 },
                 Cache = Cache,
                 OptimizationDiagnostics = true,
@@ -265,7 +268,7 @@ partial class DocumentVibrissa
             {
                 Logger.Warn($"Compiled file not found");
             }
-            Tokens = !raw.AST.Tokens.IsDefault ? raw.AST.Tokens : !raw.Tokens.Tokens.IsDefault ? Tokens : ImmutableArray<Token>.Empty;
+            Tokens = !raw.AST.OriginalTokens.IsDefault ? raw.AST.OriginalTokens : !raw.Tokens.Tokens.IsDefault ? Tokens : ImmutableArray<Token>.Empty;
             AST = raw.AST.IsNotEmpty ? raw.AST : AST;
             CompilerResult = compilerResult;
 

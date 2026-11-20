@@ -4,7 +4,7 @@ sealed class DefinitionHandler : IDefinitionHandler
 {
     public async Task<LocationOrLocationLinks?> Handle(DefinitionParams request, CancellationToken cancellationToken)
     {
-        Logger.Debug($"[Handler] Definition ({request.TextDocument}:{request.Position.ToStringMin()})");
+        Logger.Debug($"[Handler] Definition ({request.TextDocument}:{request.Position.ToReadable()})");
 
         if (OmniSharpService.Instance?.Server == null) return null;
         if (!OmniSharpService.Instance.Documents.TryGet(request.TextDocument.Uri, out DocumentBase? document))

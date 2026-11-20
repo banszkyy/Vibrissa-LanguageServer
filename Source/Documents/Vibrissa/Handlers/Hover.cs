@@ -116,7 +116,7 @@ sealed partial class DocumentVibrissa
 
         if (token == null)
         {
-            Logger.Debug($"No token at {position.ToStringMin()} ({Tokens.Length})");
+            Logger.Debug($"No token at {position.ToReadable()} ({Tokens.Length})");
             return null;
         }
 
@@ -240,20 +240,20 @@ sealed partial class DocumentVibrissa
             definitionHover = GetFieldHover(field2);
             docsHover = GetCommentDocumentation(field2);
         }
-        else if (AST.GetNodeAt(position, out ISmallNode? statement))
+        else if (AST.GetNodeAt(position, out INode? node) && node is ISmallNode smallNode)
         {
-            Position checkPosition = StatementExtensions.GetInteractivePosition(statement);
+            Position checkPosition = StatementExtensions.GetInteractivePosition(smallNode);
 
             if (!checkPosition.Range.Contains(position))
             {
-                Logger.Debug($"Node not on cursor: {statement.GetType().Name} {statement} ({checkPosition.Range.Start.ToStringMin()}-{checkPosition.Range.End.ToStringMin()} {position})");
+                Logger.Debug($"Node not on cursor: {smallNode.GetType().Name} {smallNode} ({checkPosition.Range.Start.ToReadable()}-{checkPosition.Range.End.ToReadable()} {position})");
             }
             else
             {
-                Logger.Trace($"Node on cursor: {statement.GetType().Name} {statement}");
+                Logger.Trace($"Node on cursor: {smallNode.GetType().Name} {smallNode}");
                 range = checkPosition.Range;
 
-                if (statement is IntLiteralExpression intLiteralExpression)
+                if (smallNode is IntLiteralExpression intLiteralExpression)
                 {
                     StringBuilder numbers = new();
                     string base2 = Convert.ToString(intLiteralExpression.Value, 2);
@@ -282,7 +282,7 @@ sealed partial class DocumentVibrissa
                     if (_char is not null) numbers.Append($"{type}'{_char}'");
                     definitionHover = numbers.ToString();
                 }
-                else if (statement is FloatLiteralExpression floatLiteralExpression)
+                else if (smallNode is FloatLiteralExpression floatLiteralExpression)
                 {
                     string? type =
                         floatLiteralExpression.CompiledType is not null
@@ -291,7 +291,7 @@ sealed partial class DocumentVibrissa
 
                     definitionHover = $"{type}{Convert.ToString(floatLiteralExpression.Value)}";
                 }
-                else if (statement is CharLiteralExpression charLiteralExpression)
+                else if (smallNode is CharLiteralExpression charLiteralExpression)
                 {
                     StringBuilder numbers = new();
                     string base2 = Convert.ToString(charLiteralExpression.Value, 2);
@@ -320,7 +320,7 @@ sealed partial class DocumentVibrissa
                     numbers.Append($"{type}'{_char}'");
                     definitionHover = numbers.ToString();
                 }
-                else if (statement is BinaryOperatorCallExpression binaryOperatorCallExpression
+                else if (smallNode is BinaryOperatorCallExpression binaryOperatorCallExpression
                     && binaryOperatorCallExpression.Reference is null
                     && binaryOperatorCallExpression.CompiledType is not null
                     && binaryOperatorCallExpression.Left.CompiledType is not null
@@ -328,19 +328,19 @@ sealed partial class DocumentVibrissa
                 {
                     definitionHover = $"{binaryOperatorCallExpression.CompiledType} {binaryOperatorCallExpression.Operator}({binaryOperatorCallExpression.Left.CompiledType} left, {binaryOperatorCallExpression.Right.CompiledType} right)";
                 }
-                else if (statement is UnaryOperatorCallExpression unaryOperatorCallExpression
+                else if (smallNode is UnaryOperatorCallExpression unaryOperatorCallExpression
                     && unaryOperatorCallExpression.Reference is null
                     && unaryOperatorCallExpression.CompiledType is not null
                     && unaryOperatorCallExpression.Expression.CompiledType is not null)
                 {
                     definitionHover = $"{unaryOperatorCallExpression.CompiledType} {unaryOperatorCallExpression.Operator}({unaryOperatorCallExpression.Expression.CompiledType} value)";
                 }
-                else if (statement is Expression statementWithValue && statementWithValue.CompiledType is not null)
+                else if (smallNode is Expression statementWithValue && statementWithValue.CompiledType is not null)
                 {
                     typeHover = GetTypeHover(statementWithValue.CompiledType);
                 }
 
-                if (statement is IReferenceableTo referenceableTo)
+                if (smallNode is IReferenceableTo referenceableTo)
                 {
                     //Logger.Trace($"{referenceableTo.Reference?.GetType().Name ?? "null"} {referenceableTo.Reference}");
                     definitionHover ??= GetDefinitionHover(referenceableTo.Reference);

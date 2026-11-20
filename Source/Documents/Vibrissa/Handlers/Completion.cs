@@ -359,7 +359,7 @@ sealed partial class DocumentVibrissa
             return result;
         }
 
-        foreach (ISmallNode statement in StatementWalker.EnumerateNodes(AST, StatementWalkerFilter.Before(p)))
+        foreach (INode statement in StatementWalker.EnumerateNodes(AST, StatementWalkerFilter.Before(p)))
         {
             GeneralType? objectType = null;
             Expression? objectExpression = null;

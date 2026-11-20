@@ -126,7 +126,7 @@ static class StatementExtensions
     public static bool GetStatementAt(this ParserResult parserResult, SinglePosition position, [NotNullWhen(true)] out Statement? statement)
         => (statement = StatementWalker.EnumerateNodes(parserResult, StatementWalkerFilter.At(position)).OfType<Statement>().LastOrDefault()) is not null;
 
-    public static bool GetNodeAt(this ParserResult parserResult, SinglePosition position, [NotNullWhen(true)] out ISmallNode? statement)
+    public static bool GetNodeAt(this ParserResult parserResult, SinglePosition position, [NotNullWhen(true)] out INode? statement)
         => (statement = StatementWalker.EnumerateNodes(parserResult, StatementWalkerFilter.At(position)).LastOrDefault()) is not null;
 
     public static bool GetFieldAt(this ParserResult parserResult, SinglePosition position, [NotNullWhen(true)] out FieldDefinition? result)

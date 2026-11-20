@@ -60,5 +60,5 @@ static class Extensions
         Range = self.Position.ToOmniSharp(),
     };
 
-    public static string ToStringMin(this OmniSharpPosition self) => self.ToCool().ToStringMin();
+    public static string ToReadable(this OmniSharpPosition self) => self.ToCool().ToReadable();
 }
